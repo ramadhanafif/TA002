@@ -6,8 +6,8 @@
 
 //PID constants
 #define kp 8
-#define ki 0.003
-#define kd 140
+#define ki 0.05
+#define kd 120
 
 unsigned long currentTime, previousTime;
 double elapsedTime;
@@ -18,7 +18,7 @@ double cumError, rateError;
 double persen = 0;
 
 void setup() {
-  setPoint = 50;                          //set point at zero degrees
+  setPoint = 90;                          //set point at zero degrees
   Serial.begin(115200);
   pinMode(relay, OUTPUT);
 }
