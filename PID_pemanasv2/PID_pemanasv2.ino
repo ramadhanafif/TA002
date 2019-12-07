@@ -2,11 +2,12 @@
     board wemos lolin
 */
 
-#define relay 4
+#define relay 3
+
 //PID constants
-double kp = 1;
-double ki = 0.05;
-double kd = 1;
+#define kp 8
+#define ki 0.003
+#define kd 140
 
 unsigned long currentTime, previousTime;
 double elapsedTime;
@@ -19,27 +20,26 @@ double persen = 0;
 void setup() {
   setPoint = 50;                          //set point at zero degrees
   Serial.begin(115200);
-  pinMode(relay,OUTPUT);
-  Serial.println("tes");
-  delay(10000);
+  pinMode(relay, OUTPUT);
 }
 
 void loop() {
-  input = analogRead(34);                //read from rotary encoder connected to A0
-  input = input * 500 / 4095;
+  input = analogRead(A0);                //read from rotary encoder connected to A0
+  input = input / 2.046;
 
   output = computePID(input);
-  delay(100);
 
-  pesen = output / 5000 * 100;
-  if (persen > 100) 
+  persen = output/ 500 * 100;
+  if (persen > 100)
     persen = 100;
   if (persen < 0)
     persen = 0;
 
   cetak(persen);
 
-  Serial.print(input); Serial.print(' '); Serial.println(persen);
+  Serial.print(input); Serial.print(';');
+  Serial.print(output); Serial.print(';');
+  Serial.println(persen);
 }
 
 void cetak(double pwm) {
@@ -50,7 +50,7 @@ void cetak(double pwm) {
 }
 
 double computePID(double inp) {
-  currentTime = millis();                //get current time
+  currentTime = millis()/1000;                //get current time
   elapsedTime = (double)(currentTime - previousTime);        //compute time elapsed from previous computation
 
   error = setPoint - inp;                                // determine error
@@ -59,7 +59,7 @@ double computePID(double inp) {
 
   double out = kp * error + ki * cumError + kd * rateError;          //PID output
 
-  lastError = error;                                //remember current error
+  lastError = error;                                 //remember current error
   previousTime = currentTime;                        //remember current time
 
   return out;                                        //have function return the PID output

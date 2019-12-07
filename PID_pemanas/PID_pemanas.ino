@@ -1,47 +1,34 @@
-//#include "Wire.h"
-//#include <max6675.h>
-
-/*int thermoDO = 11; //bisa juga S0
-  int thermoCS = 10;
-  int thermoCLK = 9; //bisa juga SCK
-*/
-//int led = 8;
-//MAX6675 thermocouple(thermoCLK, thermoCS, thermoDO);
-
 //pin
 #define sensor A0
 #define relay 3
 
 //koefisien PID
-#define kp 2.08
-#define ki 1.67
-//static float kd = 2.15;
+#define kp 1.5
+#define ki 0.003125
+#define kd 18.0
 
 //variable PID
 float p, i, d, pid;
-float error, errorx, sumerr;
+float error = 0,
+      errorx = 0,
+      sumerr = 0;
 
 //set point = 50
-#define p 50.0
+#define sp 50.0
 
 //variable suhu
 float vout, suhu;
 
-//pwm relay
-//uint32_t vv = 10; //persenan
 float persen;
 
 void setup() {
   pinMode(relay, OUTPUT);//pin relay
-  //pinMode(led,OUTPUT);
-  Serial.begin(57600);
+  Serial.begin(115200);
 }
 
-
 void loop() {
-
   vout = analogRead(sensor); //pembacaan sensor
-  vout = (vout * 500) / 1023; //suhu dalam celcius
+  suhu = vout / 2.046; //suhu dalam celcius
 
   //relay
   digitalWrite(relay, HIGH);
@@ -52,31 +39,23 @@ void loop() {
   //PID
   error = sp - suhu;
   p = error * kp;
-  sumerr = error + errorx;
+  sumerr += errorx;
   i = ki * sumerr;
-//  d = error - errorx;
+  d = error - errorx;
   pid = p + i + d;
-  pid = 255.0 - pid;
 
-  if (pid < 1) {
-    pid = 0;
-  }
-
-  persen = pid / 2.55;
+  //Normalisasi PID, konversi ke duty cycle
+  persen = pid / 10;
 
   if (persen > 100) {
     persen = 100;
   }
 
-  persen = 100 - persen;
-
-  //display
-//  Serial.print("suhu= ");
+  //Data
+  //  Serial.print("suhu= ");
   Serial.println(suhu);
   //Serial.print("pid= ");
   //Serial.println(persen);
-
-  delay(1000);
 
   errorx = error;
 
