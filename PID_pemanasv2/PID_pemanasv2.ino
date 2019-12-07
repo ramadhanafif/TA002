@@ -5,9 +5,9 @@
 #define relay 3
 
 //PID constants
-#define kp 8
-#define ki 0.05
-#define kd 120
+#define kp 10
+#define ki 0.03
+#define kd 140
 
 unsigned long currentTime, previousTime;
 double elapsedTime;
@@ -18,7 +18,7 @@ double cumError, rateError;
 double persen = 0;
 
 void setup() {
-  setPoint = 90;                          //set point at zero degrees
+  setPoint = 100;                          //set point at zero degrees
   Serial.begin(115200);
   pinMode(relay, OUTPUT);
 }
