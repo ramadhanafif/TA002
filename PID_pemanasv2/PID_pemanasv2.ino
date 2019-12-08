@@ -29,7 +29,7 @@ void loop() {
 
   output = computePID(input);
 
-  persen = output/ 500 * 100;
+  persen = output / 500 * 100;
   if (persen > 100)
     persen = 100;
   if (persen < 0)
@@ -50,7 +50,7 @@ void cetak(double pwm) {
 }
 
 double computePID(double inp) {
-  currentTime = millis()/1000;                //get current time
+  currentTime = millis() / 1000;              //get current time
   elapsedTime = (double)(currentTime - previousTime);        //compute time elapsed from previous computation
 
   error = setPoint - inp;                                // determine error
