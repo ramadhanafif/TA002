@@ -18,7 +18,7 @@ double cumError, rateError;
 double persen = 0;
 
 void setup() {
-  setPoint = 75;                          //set point at zero degrees
+  setPoint = 100;                          //set point at zero degrees
   Serial.begin(115200);
   pinMode(relay, OUTPUT);
 }
