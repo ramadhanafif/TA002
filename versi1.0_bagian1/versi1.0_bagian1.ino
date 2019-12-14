@@ -4,10 +4,11 @@
 
 // universal needs
 int stateCondition = 0;
-int temperatur = 25, kecepatan = 0, jam = 0, menit = 0;
-boolean lastButtonState = HIGH;
+int temperatur = 25, kecepatan = 0;
+unsigned int jam = 0; 
+unsigned int menit = 0;
+boolean lastButtonState = LOW;
 boolean currentButtonState;
-//int a = 0, b = 0, c = 0, d = 0, i = 0; // not really necessary
 
 // Fot the rotary encoder
 int encoderPin1 = 2;
@@ -58,7 +59,7 @@ void loop()
 
     encoderValue = 0; // reset the value 
 
-    while (stateCondition == 0) {      
+    while (stateCondition == 0) {   // condition when temperature being set
         temperatur = (encoderValue / 4) + 25;
         
         // temperatur value must be between 25 up to 90 deg C
@@ -70,6 +71,10 @@ void loop()
             lcd.print("Temperatur: ");              // show string on LCD
             lcd.setCursor(12,0);                    // show character at column 12, row 0
             lcd.print(tempVal);                     // show the value
+            lcd.setCursor(16,0);                    // show character at column 16, row 0
+            lcd.print((char)223);                   // show string on LCD
+            lcd.setCursor(17,0);                    // show character at column 17, row 0
+            lcd.print("C");                         // show string on LCD
             delayMicroseconds(1);
         } else if (temperatur > 90) {
             encoderValue = 65 * 4;
@@ -79,6 +84,10 @@ void loop()
             lcd.print("Temperatur: ");              // show string on LCD
             lcd.setCursor(12,0);                    // show character at column 12, row 0
             lcd.print(tempVal);                     // show the value
+            lcd.setCursor(16,0);                    // show character at column 16, row 0
+            lcd.print((char)223);                   // show string on LCD
+            lcd.setCursor(17,0);                    // show character at column 17, row 0
+            lcd.print("C");                         // show string on LCD
             delayMicroseconds(1);
         } else {
             sprintf(tempVal, "%3d", temperatur);    // map int value to string
@@ -86,6 +95,10 @@ void loop()
             lcd.print("Temperatur: ");              // show string on LCD
             lcd.setCursor(12,0);                    // show character at column 12, row 0
             lcd.print(tempVal);                     // show the value
+            lcd.setCursor(16,0);                    // show character at column 16, row 0
+            lcd.print((char)223);                   // show string on LCD
+            lcd.setCursor(17,0);                    // show character at column 17, row 0
+            lcd.print("C");                         // show string on LCD
             delayMicroseconds(1);
         }
 
@@ -106,25 +119,31 @@ void loop()
         lastButtonState = currentButtonState;       
     }
 
-    while (stateCondition == 1) {
+    while (stateCondition == 1) {   // condition when rpm motor being set
         // show the previous data
         lcd.setCursor(0,0);                     // show character at column 0, row 0
         lcd.print("Temperatur: ");              // show string on LCD
         lcd.setCursor(12,0);                    // show character at column 12, row 0
         lcd.print(tempVal);                     // show the value
+        lcd.setCursor(16,0);                    // show character at column 16, row 0
+        lcd.print((char)223);                   // show string on LCD
+        lcd.setCursor(17,0);                    // show character at column 17, row 0
+        lcd.print("C");                         // show string on LCD
         delayMicroseconds(1);
 
         kecepatan = encoderValue / 4;
 
         // kecepatan value mush be between 0 up to 70 rpm
-        if (kecepatan < 0) {
-            encoderValue = 0;
+        if (kecepatan < 30) {
+            encoderValue = 30 * 4;
             kecepatan = encoderValue / 4;
             sprintf(spdVal, "%3d", kecepatan);      // map int value to string
             lcd.setCursor(0,1);                     // show character at column 0, row 1
             lcd.print("Kecepatan : ");              // show string on LCD
             lcd.setCursor(12,1);                    // show character at column 12, row 1
             lcd.print(spdVal);                      // show the value
+            lcd.setCursor(16,1);                    // show character at column 16, row 1
+            lcd.print("RPM");                       // show string on LCD
             delayMicroseconds(1);
         } else if (kecepatan > 70) {
             encoderValue = 70 * 4;
@@ -134,6 +153,8 @@ void loop()
             lcd.print("Kecepatan : ");              // show string on LCD
             lcd.setCursor(12,1);                    // show character at column 12, row 1
             lcd.print(spdVal);                      // show the value
+            lcd.setCursor(16,1);                    // show character at column 16, row 1
+            lcd.print("RPM");                       // show string on LCD
             delayMicroseconds(1);
         } else {
             sprintf(spdVal, "%3d", kecepatan);      // map int value to string
@@ -141,6 +162,8 @@ void loop()
             lcd.print("Kecepatan : ");              // show string on LCD
             lcd.setCursor(12,1);                    // show character at column 12, row 1
             lcd.print(spdVal);                      // show the value
+            lcd.setCursor(16,1);                    // show character at column 16, row 1
+            lcd.print("RPM");                       // show string on LCD
             delayMicroseconds(1);
         }
 
@@ -161,35 +184,43 @@ void loop()
         lastButtonState = currentButtonState;
     }
 
-    while (stateCondition == 2) {       // condition when hour is being set
+    while (stateCondition == 2) {   // condition when hour is being set
         // show the previous data
-        lcd.setCursor(0,0);                     // show character at column 0, row 1
+        lcd.setCursor(0,0);                     // show character at column 0, row 0
         lcd.print("Temperatur: ");              // show string on LCD
-        lcd.setCursor(12,0);                    // show character at column 12, row 1
+        lcd.setCursor(12,0);                    // show character at column 12, row 0
         lcd.print(tempVal);                     // show the value
+        lcd.setCursor(16,0);                    // show character at column 16, row 0
+        lcd.print((char)223);                   // show string "degree" on LCD
+        lcd.setCursor(17,0);                    // show character at column 17, row 0
+        lcd.print("C");                         // show string on LCD
         delayMicroseconds(1);
 
         lcd.setCursor(0,1);                     // show character at column 0, row 1
         lcd.print("Kecepatan : ");              // show string on LCD
         lcd.setCursor(12,1);                    // show character at column 12, row 1
         lcd.print(spdVal);                      // show the value
-
-        jam = (encoderValue / 4) % 24;
-
-        // jam value mush be between 0 up to 23 
-        lcd.setCursor(0,2);                     // show character at column 0, row 0
-        lcd.print("Durasi    : ");              // show string on LCD
-        lcd.setCursor(12,2);                    // show character at column 12, row 0
-        lcd.print(jam, DEC);                    // show the value
-        lcd.setCursor(14,2);
-        lcd.print(".");
-        lcd.setCursor(15,2);
-        lcd.print(menit, DEC);                   
+        lcd.setCursor(16,1);                    // show character at column 16, row 1
+        lcd.print("RPM");                       // show string on LCD
         delayMicroseconds(1);
 
-        Serial.print(temperatur); Serial.print("  "); 
-        Serial.print(spdVal); Serial.print("  ");
-        Serial.println(jam);
+        jam = ((encoderValue / 4) + (25 * 1000));  // the value far away from zero
+        menit = 0;
+
+        // jam value mush be between 0 up to 23
+        sprintf(hourVal, "%3u", (jam % 25));           // map int value to string
+        sprintf(minVal, "%3u", menit);          // map int value to string
+        lcd.setCursor(0,2);                     // show character at column 0, row 2
+        lcd.print("Durasi    : ");              // show string on LCD
+        lcd.setCursor(12,2);                    // show character at column 12, row 2
+        lcd.print(hourVal);                     // show the value
+        lcd.setCursor(16,2);                    // show character at column 16, row 2
+        lcd.print("JAM");                       // show string on LCD
+        lcd.setCursor(12,3);                    // show character at column 12, row 3
+        lcd.print(minVal);                      // show the value
+        lcd.setCursor(16,3);                    // show character at column 16, row 3
+        lcd.print("MEN");                       // show string on LCD                   
+        delayMicroseconds(1);
 
         // push button action
         currentButtonState = digitalRead(encoderSwitchPin);
@@ -200,7 +231,8 @@ void loop()
         } else if (currentButtonState == LOW && lastButtonState == HIGH){
             //button is being pushed
             stateCondition ++;
-            encoderValue = 0; 
+            encoderValue = 0;
+            jam = atoi(hourVal); 
         }
 
         lastButtonState = currentButtonState;
@@ -208,33 +240,56 @@ void loop()
 
     while (stateCondition == 3) {       // condition when minute is being set
         // show the previous data
-        lcd.setCursor(0,0);                     // show character at column 0, row 1
+        lcd.setCursor(0,0);                     // show character at column 0, row 0
         lcd.print("Temperatur: ");              // show string on LCD
-        lcd.setCursor(12,0);                    // show character at column 12, row 1
+        lcd.setCursor(12,0);                    // show character at column 12, row 0
         lcd.print(tempVal);                     // show the value
+        lcd.setCursor(16,0);                    // show character at column 16, row 0
+        lcd.print((char)223);                   // show string "degree" on LCD
+        lcd.setCursor(17,0);                    // show character at column 17, row 0
+        lcd.print("C");                         // show string on LCD
         delayMicroseconds(1);
 
         lcd.setCursor(0,1);                     // show character at column 0, row 1
         lcd.print("Kecepatan : ");              // show string on LCD
         lcd.setCursor(12,1);                    // show character at column 12, row 1
         lcd.print(spdVal);                      // show the value
-
-        menit = (encoderValue / 4) % 60;
-
-        // jam value mush be between 0 up to 23 
-        lcd.setCursor(0,2);                     // show character at column 0, row 0
-        lcd.print("Durasi    : ");              // show string on LCD
-        lcd.setCursor(12,2);                    // show character at column 12, row 0
-        lcd.print(jam, DEC);                    // show the value
-        lcd.print(".");
-        lcd.print(menit, DEC);                   
+        lcd.setCursor(16,1);                    // show character at column 16, row 1
+        lcd.print("RPM");                       // show string on LCD
         delayMicroseconds(1);
 
-        Serial.print(temperatur); Serial.print("  "); 
-        Serial.print(spdVal); Serial.print("  ");
-        Serial.print(jam); Serial.print("  ");
-        Serial.println(menit);
+        if (jam == 24) {
+            menit = 0;
+            sprintf(minVal, "%3u", (menit % 60));          // map int value to string
+            lcd.setCursor(0,2);                     // show character at column 0, row 2
+            lcd.print("Durasi    : ");              // show string on LCD
+            lcd.setCursor(12,2);                    // show character at column 12, row 2
+            lcd.print(hourVal);                     // show the value
+            lcd.setCursor(16,2);                    // show character at column 16, row 2
+            lcd.print("JAM");                       // show string on LCD
+            lcd.setCursor(12,3);                    // show character at column 12, row 3
+            lcd.print(minVal);                      // show the value
+            lcd.setCursor(16,3);                    // show character at column 16, row 3
+            lcd.print("MEN");                       // show string on LCD                   
+            delayMicroseconds(1);
+        } else {
+            menit = ((encoderValue / 4) + (60 * 100));  // the value far away from zero
 
+            // jam value mush be between 0 up to 59
+            sprintf(minVal, "%3u", (menit % 60));          // map int value to string
+            lcd.setCursor(0,2);                     // show character at column 0, row 2
+            lcd.print("Durasi    : ");              // show string on LCD
+            lcd.setCursor(12,2);                    // show character at column 12, row 2
+            lcd.print(hourVal);                     // show the value
+            lcd.setCursor(16,2);                    // show character at column 16, row 2
+            lcd.print("JAM");                       // show string on LCD
+            lcd.setCursor(12,3);                    // show character at column 12, row 3
+            lcd.print(minVal);                      // show the value
+            lcd.setCursor(16,3);                    // show character at column 16, row 3
+            lcd.print("MEN");                       // show string on LCD                   
+            delayMicroseconds(1);
+        }
+        
         // push button action
         currentButtonState = digitalRead(encoderSwitchPin);
         delay(50);
@@ -244,18 +299,14 @@ void loop()
         } else if (currentButtonState == LOW && lastButtonState == HIGH){
             //button is being pushed
             stateCondition ++;
-            encoderValue = 0; 
+            encoderValue = 0;
+            menit = atoi(minVal); 
         }
 
         lastButtonState = currentButtonState;
     }
     
-    
-	// lcd.setCursor(0,0);                     // untuk menampilkan karakter dari kolom 0 dan baris 0
-  	// lcd.print("Temperatur: ");		        // untuk menampilkan tulisan ke lcd
-	// lcd.setCursor(0,1);                     // untuk menampilkan karakter dari kolom 0 dan baris 0
-  	// lcd.print("Kecepatan : ");
-	//lcd.clear();
+	// lcd.clear();
 }
 
 // interrupt when any change happen
