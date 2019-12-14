@@ -1,8 +1,8 @@
 // include freeRTOS library
-#include <Arduino_FreeRTOS.h>
+#include <MapleFreeRTOS900.h>
 
 // include library Kalman Filter
-#include <SimpleKalmanFilter.h>
+#include "SimpleKalmanFilter.h"
 
 // include library Median Filter
 #include "MedianFilterLib.h"
@@ -46,7 +46,7 @@ MedianFilter<float> medianFilter(5);
 void TaskSpeedRead_rpm( void *pvParameters );
 
 void setup() {
-    Serial.begin(115200);
+    Serial1.begin(115200);
     pinMode(dir1, OUTPUT);
     pinMode(dir2, OUTPUT);
     pinMode(pwm, OUTPUT);
@@ -113,16 +113,16 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
 }
 
 void printMotorInfo() {
-    // Serial.print("Setpoint: ");    Serial.println(speed_req);
-    // Serial.print("Speed RPM: ");    Serial.println(speed_actual);
-    // Serial.print("error: ");     Serial.println(error);
-    // Serial.print("last error: ");     Serial.println(last_error);
-    // Serial.print("sum error: ");     Serial.println(sum_error);
-    // Serial.print("PWM_val: ");      Serial.println(PWM_val);
-    // Serial.print("PID Term: ");     Serial.println(pidTerm);
-    Serial.print(speed_req);
-    Serial.print("\t");
-    Serial.println(speed_actual);
+    // Serial1.print("Setpoint: ");    Serial1.println(speed_req);
+    // Serial1.print("Speed RPM: ");    Serial1.println(speed_actual);
+    // Serial1.print("error: ");     Serial1.println(error);
+    // Serial1.print("last error: ");     Serial1.println(last_error);
+    // Serial1.print("sum error: ");     Serial1.println(sum_error);
+    // Serial1.print("PWM_val: ");      Serial1.println(PWM_val);
+    // Serial1.print("PID Term: ");     Serial1.println(pidTerm);
+    Serial1.print(speed_req);
+    Serial1.print("\t");
+    Serial1.println(speed_actual);
 }
 
 // interrupt when any change happen

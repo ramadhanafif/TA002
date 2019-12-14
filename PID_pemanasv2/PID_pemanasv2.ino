@@ -6,8 +6,8 @@
 
 //PID constants
 #define kp 10
-#define ki 0.03
-#define kd 140
+#define ki 0.011
+#define kd 1
 
 unsigned long currentTime, previousTime;
 double elapsedTime;
@@ -55,9 +55,9 @@ double computePID(double inp) {
 
   error = setPoint - inp;                                // determine error
   cumError += error * elapsedTime;                // compute integral
-  rateError = (error - lastError) / elapsedTime; // compute derivative
+  //rateError = (error - lastError) / elapsedTime; // compute derivative
 
-  double out = kp * error + ki * cumError + kd * rateError;          //PID output
+  double out = kp * error + ki * cumError;// + kd * rateError;          //PID output
 
   lastError = error;                                 //remember current error
   previousTime = currentTime;                        //remember current time
