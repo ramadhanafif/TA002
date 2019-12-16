@@ -1,6 +1,7 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 //#include <math.h>
+#include "ArduinoJson.h"
 
 // universal needs
 int stateCondition = 0;
@@ -28,6 +29,10 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 void setup()
 {
     Serial.begin (9600);
+
+    // making JSON file for transmiting data
+    // StaticJsonDocument<200> doc;
+
 
 	// initialize the LCD
 	lcd.begin();
@@ -102,7 +107,7 @@ void loop()
             delayMicroseconds(1);
         }
 
-        Serial.println(temperatur);
+        // Serial.println(temperatur);
 
         // push button action
         currentButtonState = digitalRead(encoderSwitchPin);
@@ -167,7 +172,7 @@ void loop()
             delayMicroseconds(1);
         }
 
-        Serial.print(temperatur); Serial.print("  "); Serial.println(spdVal);
+        // Serial.print(temperatur); Serial.print("  "); Serial.println(spdVal);
 
         // push button action
         currentButtonState = digitalRead(encoderSwitchPin);
@@ -290,6 +295,31 @@ void loop()
             delayMicroseconds(1);
         }
         
+        // push button action
+        currentButtonState = digitalRead(encoderSwitchPin);
+        delay(50);
+        if (currentButtonState == HIGH && lastButtonState == LOW) {
+            //button is not being pushed
+            //do nothing
+        } else if (currentButtonState == LOW && lastButtonState == HIGH){
+            //button is being pushed
+            stateCondition ++;
+            encoderValue = 0;
+            menit = atoi(minVal); 
+        }
+
+        lastButtonState = currentButtonState;
+    }
+
+    while (stateCondition == 4) {
+        StaticJsonDocument<200> doc;
+        doc["temperature"] = temperatur;
+        doc["kecepatan"] = kecepatan;
+        doc["jam"] = jam;
+        doc["menit"] = menit;
+        serializeJsonPretty(doc, Serial);
+        Serial.println();
+
         // push button action
         currentButtonState = digitalRead(encoderSwitchPin);
         delay(50);
