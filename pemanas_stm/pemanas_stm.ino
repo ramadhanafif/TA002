@@ -25,7 +25,7 @@ void TaskCompute(void* v) {
   pinMode(TEMP_SENSOR, INPUT_ANALOG);
   for (;;) {
     input = analogRead(TEMP_SENSOR);                //read from rotary encoder connected to A0
-    input = input / 12.409;
+    input = input / 12.409 + 5;
 
     output = computePID(input);
 
