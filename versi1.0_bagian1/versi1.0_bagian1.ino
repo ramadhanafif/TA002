@@ -1,7 +1,6 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 //#include <math.h>
-#include "ArduinoJson.h"
 
 // universal needs
 int stateCondition = 0;
@@ -12,9 +11,9 @@ boolean lastButtonState = LOW;
 boolean currentButtonState;
 
 // Fot the rotary encoder
-int encoderPin1 = 2;
-int encoderPin2 = 3;
-int encoderSwitchPin = 4; // push button rotary encoder
+int encoderPin1 = PB14;
+int encoderPin2 = PB13;
+int encoderSwitchPin = PB12; // push button rotary encoder
 volatile int lastEncoded = 0;
 volatile unsigned long encoderValue = 0;
 
@@ -50,8 +49,8 @@ void setup()
 
     //call updateEncoder() when any high/low changed seen
     //on interrupt 0 (pin 2), or interrupt 1 (pin 3)
-    attachInterrupt(0, updateEncoder, CHANGE);
-    attachInterrupt(1, updateEncoder, CHANGE);
+    attachInterrupt(encoderPin1, updateEncoder, CHANGE);
+    attachInterrupt(encoderPin2, updateEncoder, CHANGE);
 }
 
 void loop()
@@ -311,30 +310,30 @@ void loop()
         lastButtonState = currentButtonState;
     }
 
-    while (stateCondition == 4) {
-        StaticJsonDocument<200> doc;
-        doc["temperature"] = temperatur;
-        doc["kecepatan"] = kecepatan;
-        doc["jam"] = jam;
-        doc["menit"] = menit;
-        serializeJsonPretty(doc, Serial);
-        Serial.println();
+    // while (stateCondition == 4) {
+    //     StaticJsonDocument<200> doc;
+    //     doc["temperature"] = temperatur;
+    //     doc["kecepatan"] = kecepatan;
+    //     doc["jam"] = jam;
+    //     doc["menit"] = menit;
+    //     serializeJsonPretty(doc, Serial);
+    //     Serial.println();
 
-        // push button action
-        currentButtonState = digitalRead(encoderSwitchPin);
-        delay(50);
-        if (currentButtonState == HIGH && lastButtonState == LOW) {
-            //button is not being pushed
-            //do nothing
-        } else if (currentButtonState == LOW && lastButtonState == HIGH){
-            //button is being pushed
-            stateCondition ++;
-            encoderValue = 0;
-            menit = atoi(minVal); 
-        }
+    //     // push button action
+    //     currentButtonState = digitalRead(encoderSwitchPin);
+    //     delay(50);
+    //     if (currentButtonState == HIGH && lastButtonState == LOW) {
+    //         //button is not being pushed
+    //         //do nothing
+    //     } else if (currentButtonState == LOW && lastButtonState == HIGH){
+    //         //button is being pushed
+    //         stateCondition ++;
+    //         encoderValue = 0;
+    //         menit = atoi(minVal); 
+    //     }
 
-        lastButtonState = currentButtonState;
-    }
+    //     lastButtonState = currentButtonState;
+    // }
     
 	// lcd.clear();
 }
