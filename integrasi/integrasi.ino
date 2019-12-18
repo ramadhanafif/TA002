@@ -25,8 +25,8 @@ SemaphoreHandle_t xAduk = NULL;
 #define KI 0.011
 
 //pengaduk
-#define pwm PA9 
-#define dir1 PB15 
+#define pwm PA9
+#define dir1 PB15
 #define dir2 PA8
 
 //pemanas
@@ -50,8 +50,8 @@ boolean currentButtonState;
 int encoderPin1 = PB14;
 int encoderPin2 = PB13;
 int encoderSwitchPin = PB12; // push button rotary encoder
-volatile int lastEncoded = 0;
-volatile unsigned long encoderValue = 0;
+volatile int lastEncodedUI = 0;
+volatile unsigned long encoderValueUI = 0;
 long lastencoderValue = 0; // store the value of rotary encoder
 int lastMSB = 0;
 int lastLSB = 0;
@@ -65,7 +65,7 @@ float speed_actual = 0;   // in rpm
 double Kp = 9;
 double Kd = 19;
 double Ki = 0.03;
-float error = 0;
+float error_mot = 0;
 float last_error = 0;
 float sum_error = 0;
 
@@ -82,8 +82,8 @@ double vel;
 volatile double encoderValue = 0;
 
 // SimpleKalmanFilter(e_mea, e_est, q);
-// e_mea: Measurement Uncertainty 
-// e_est: Estimation Uncertainty 
+// e_mea: Measurement Uncertainty
+// e_est: Estimation Uncertainty
 // q: Process Noise
 SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
@@ -169,15 +169,15 @@ void TaskUI(void* v) {
     char minVal[4];
     char hourVal[4];
 
-    encoderValue = 0; // reset the value
+    encoderValueUI = 0; // reset the value
 
     while (stateCondition == 0) {   // condition when temperature being set
-      temperatur = (encoderValue / 4) + 25;
+      temperatur = (encoderValueUI / 4) + 25;
 
       // temperatur value must be between 25 up to 90 deg C
       if (temperatur < 25) {
-        encoderValue = 0;
-        temperatur = (encoderValue / 4) + 25;
+        encoderValueUI = 0;
+        temperatur = (encoderValueUI / 4) + 25;
         sprintf(tempVal, "%3d", temperatur);    // map int value to string
         lcd.setCursor(0, 0);                    // show character at column 0, row 0
         lcd.print("Temperatur: ");              // show string on LCD
@@ -189,8 +189,8 @@ void TaskUI(void* v) {
         lcd.print("C");                         // show string on LCD
         delayMicroseconds(1);
       } else if (temperatur > 90) {
-        encoderValue = 65 * 4;
-        temperatur = (encoderValue / 4) + 25;
+        encoderValueUI = 65 * 4;
+        temperatur = (encoderValueUI / 4) + 25;
         sprintf(tempVal, "%3d", temperatur);    // map int value to string
         lcd.setCursor(0, 0);                    // show character at column 0, row 0
         lcd.print("Temperatur: ");              // show string on LCD
@@ -225,7 +225,7 @@ void TaskUI(void* v) {
       } else if (currentButtonState == LOW && lastButtonState == HIGH) {
         //button is being pushed
         stateCondition ++;
-        encoderValue = 0;
+        encoderValueUI = 0;
       }
 
       lastButtonState = currentButtonState;
@@ -243,12 +243,12 @@ void TaskUI(void* v) {
       lcd.print("C");                         // show string on LCD
       delayMicroseconds(1);
 
-      kecepatan = encoderValue / 4;
+      kecepatan = encoderValueUI / 4;
 
       // kecepatan value mush be between 0 up to 70 rpm
       if (kecepatan < 30) {
-        encoderValue = 30 * 4;
-        kecepatan = encoderValue / 4;
+        encoderValueUI = 30 * 4;
+        kecepatan = encoderValueUI / 4;
         sprintf(spdVal, "%3d", kecepatan);      // map int value to string
         lcd.setCursor(0, 1);                    // show character at column 0, row 1
         lcd.print("Kecepatan : ");              // show string on LCD
@@ -258,8 +258,8 @@ void TaskUI(void* v) {
         lcd.print("RPM");                       // show string on LCD
         delayMicroseconds(1);
       } else if (kecepatan > 70) {
-        encoderValue = 70 * 4;
-        kecepatan = encoderValue / 4;
+        encoderValueUI = 70 * 4;
+        kecepatan = encoderValueUI / 4;
         sprintf(spdVal, "%3d", kecepatan);      // map int value to string
         lcd.setCursor(0, 1);                    // show character at column 0, row 1
         lcd.print("Kecepatan : ");              // show string on LCD
@@ -290,7 +290,7 @@ void TaskUI(void* v) {
       } else if (currentButtonState == LOW && lastButtonState == HIGH) {
         //button is being pushed
         stateCondition ++;
-        encoderValue = 0;
+        encoderValueUI = 0;
       }
 
       lastButtonState = currentButtonState;
@@ -316,7 +316,7 @@ void TaskUI(void* v) {
       lcd.print("RPM");                       // show string on LCD
       delayMicroseconds(1);
 
-      jam = ((encoderValue / 4) + (25 * 1000));  // the value far away from zero
+      jam = ((encoderValueUI / 4) + (25 * 1000));  // the value far away from zero
       menit = 0;
 
       // jam value mush be between 0 up to 23
@@ -343,7 +343,7 @@ void TaskUI(void* v) {
       } else if (currentButtonState == LOW && lastButtonState == HIGH) {
         //button is being pushed
         stateCondition ++;
-        encoderValue = 0;
+        encoderValueUI = 0;
         jam = atoi(hourVal);
       }
 
@@ -385,7 +385,7 @@ void TaskUI(void* v) {
         lcd.print("MEN");                       // show string on LCD
         delayMicroseconds(1);
       } else {
-        menit = ((encoderValue / 4) + (60 * 100));  // the value far away from zero
+        menit = ((encoderValueUI / 4) + (60 * 100));  // the value far away from zero
 
         // jam value mush be between 0 up to 59
         sprintf(minVal, "%3u", (menit % 60));          // map int value to string
@@ -411,7 +411,7 @@ void TaskUI(void* v) {
       } else if (currentButtonState == LOW && lastButtonState == HIGH) {
         //button is being pushed
         stateCondition ++;
-        encoderValue = 0;
+        encoderValueUI = 0;
         menit = atoi(minVal);
 
         //Release all semaphores
@@ -433,7 +433,7 @@ void TaskUI(void* v) {
       } else if (currentButtonState == LOW && lastButtonState == HIGH) {
         //button is being pushed
         stateCondition ++;
-        encoderValue = 0;
+        encoderValueUI = 0;
         menit = atoi(minVal);
       }
 
@@ -488,20 +488,20 @@ void setup() {
   digitalWrite(dir2, HIGH);
 
   xTaskCreate(
-  TaskSpeedRead_rpm
-  ,  (const portCHAR *)"SpeedRead_rpm"    // A name just for humans
-  ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
-  ,  NULL
-  ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-  ,  NULL );
+    TaskSpeedRead_rpm
+    ,  (const portCHAR *)"SpeedRead_rpm"    // A name just for humans
+    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  NULL
+    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  NULL );
 
   xTaskCreate(
-  TaskPWMCalculator
-  ,  (const portCHAR *)"PWMCalculator"    // A name just for humans
-  ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
-  ,  NULL
-  ,  0  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-  ,  NULL );
+    TaskPWMCalculator
+    ,  (const portCHAR *)"PWMCalculator"    // A name just for humans
+    ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+    ,  NULL
+    ,  0  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  NULL );
 }
 
 void loop() {
@@ -513,17 +513,17 @@ void updateEncoderUI() {
   int MSB = digitalRead(encoderPin1); //MSB = most significant bit
   int LSB = digitalRead(encoderPin2); //LSB = least significant bit
   int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
-  int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
+  int sum = (lastEncodedUI << 2) | encoded; //adding it to the previous encoded value
 
   if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
-    encoderValue --;
+    encoderValueUI --;
   }
 
   if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
-    encoderValue ++;
+    encoderValueUI ++;
   }
 
-  lastEncoded = encoded; //store this value for next time
+  lastEncodedUI = encoded; //store this value for next time
 }
 
 //pemanas
@@ -545,91 +545,91 @@ double computePID(double inp) {
 void TaskPWMCalculator(void *pvParameters)  // This is a task.
 {
   if (xSemaphoreTake(xAduk, (TickType_t) portMAX_DELAY) == pdTRUE) {
-    (void) pvParameters;
+    //(void) pvParameters;
 
     pinMode(pwm, OUTPUT);
     speed_req = kecepatan;
     for (;;) // A Task shall never return or exit.
     {
-        // speed from low rpm gear
-        error = speed_req - speed_actual;
-        pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki;
-        last_error = error;
-        sum_error += error;
-        sum_error = constrain(sum_error, -4000, 4000);
-        PWM_val = constrain(pidTerm, 39, 255);
-        
-        analogWrite(pwm, PWM_val);
-        printMotorInfo();
-        vTaskDelay(1);
+      // speed from low rpm gear
+      error_mot = speed_req - speed_actual;
+      pidTerm = (Kp * error_mot) + (Kd * (error_mot - last_error)) + sum_error * Ki;
+      last_error = error_mot;
+      sum_error += error_mot;
+      sum_error = constrain(sum_error, -4000, 4000);
+      PWM_val = constrain(pidTerm, 39, 255);
+
+      analogWrite(pwm, PWM_val);
+      printMotorInfo();
+      vTaskDelay(1);
     }
   }
 }
 
 void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
 {
-    (void) pvParameters;
+  //(void) pvParameters;
 
-    pinMode(enA, INPUT);
-    digitalWrite(enA, HIGH);       // turn on pullup resistor
-    pinMode(enB, INPUT);
-    digitalWrite(enB, HIGH);       // turn on pullup resistor
-    attachInterrupt(enA, updateEncoderMotor, CHANGE);  // encoDER ON PIN 2
-    attachInterrupt(enB, updateEncoderMotor, CHANGE);
+  pinMode(enA, INPUT);
+  digitalWrite(enA, HIGH);       // turn on pullup resistor
+  pinMode(enB, INPUT);
+  digitalWrite(enB, HIGH);       // turn on pullup resistor
+  attachInterrupt(enA, updateEncoderMotor, CHANGE);  // encoDER ON PIN 2
+  attachInterrupt(enB, updateEncoderMotor, CHANGE);
 
-    for (;;) // A Task shall never return or exit.
-    {
-        // motor use gear ratio 1 : 46.8512
-        // speed from high rpm gear
-        // Serial.println("haha");
-        newposition = encoderValue / 50;
-        vel = (newposition - oldposition);
-        oldposition = newposition;
-        
-        float real_value = vel;
+  for (;;) // A Task shall never return or exit.
+  {
+    // motor use gear ratio 1 : 46.8512
+    // speed from high rpm gear
+    // Serial.println("haha");
+    newposition = encoderValue / 50;
+    vel = (newposition - oldposition);
+    oldposition = newposition;
 
-        // calculate the estimated value with Median Filter
-        float median_value = medianFilter.AddValue(real_value);
-        median_value = median_value * (1000/15) * 60 / 46.8512;
+    float real_value = vel;
 
-        // calculate the estimated RPM value with Kalman Filter
-        float kalman_value = simpleKalmanFilter.updateEstimate(median_value);
+    // calculate the estimated value with Median Filter
+    float median_value = medianFilter.AddValue(real_value);
+    median_value = median_value * (1000 / 15) * 60 / 46.8512;
 
-        // filtered value for PID calculation
-        speed_actual = kalman_value; 
+    // calculate the estimated RPM value with Kalman Filter
+    float kalman_value = simpleKalmanFilter.updateEstimate(median_value);
 
-        vTaskDelay(1); // delay for 15 ms
-    }
+    // filtered value for PID calculation
+    speed_actual = kalman_value;
+
+    vTaskDelay(1); // delay for 15 ms
+  }
 }
 
 // function for printing data
 void printMotorInfo() {
-    Serial.print("Setpoint: ");    Serial.println(speed_req);
-    Serial.print("Speed RPM: ");    Serial.println(speed_actual);
-    Serial.print("error: ");     Serial.println(error);
-    Serial.print("last error: ");     Serial.println(last_error);
-    Serial.print("sum error: ");     Serial.println(sum_error);
-    Serial.print("PWM_val: ");      Serial.println(PWM_val);
-    Serial.print("PID Term: ");     Serial.println(pidTerm);
-    // // Serial.print(speed_req);
-    // // Serial.print("\t");
-    // Serial.println(speed_actual);
+  Serial.print("Setpoint: ");    Serial.println(speed_req);
+  Serial.print("Speed RPM: ");    Serial.println(speed_actual);
+  Serial.print("error: ");     Serial.println(error_mot);
+  Serial.print("last error: ");     Serial.println(last_error);
+  Serial.print("sum error: ");     Serial.println(sum_error);
+  Serial.print("PWM_val: ");      Serial.println(PWM_val);
+  Serial.print("PID Term: ");     Serial.println(pidTerm);
+  // // Serial.print(speed_req);
+  // // Serial.print("\t");
+  // Serial.println(speed_actual);
 }
 
 // interrupt when any change happen
-void updateEncoderMotor(){
-    int MSB = digitalRead(enB); //MSB = most significant bit
-    int LSB = digitalRead(enA); //LSB = least significant bit
-    int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number 
-    int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
+void updateEncoderMotor() {
+  int MSB = digitalRead(enB); //MSB = most significant bit
+  int LSB = digitalRead(enA); //LSB = least significant bit
+  int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
+  int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
 
-    if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
-        encoderValue --; 
-    }
-      
-    if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
-        encoderValue ++; 
-    }
-    
-    lastEncoded = encoded; //store this value for next time 
+  if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
+    encoderValue --;
+  }
+
+  if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
+    encoderValue ++;
+  }
+
+  lastEncoded = encoded; //store this value for next time
 }
