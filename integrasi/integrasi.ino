@@ -6,6 +6,11 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+// include library Kalman Filter
+#include "SimpleKalmanFilter.h"
+// include library Median Filter
+#include "MedianFilterLib.h"
+
 //Semaphore and Mutex
 SemaphoreHandle_t xPanas = NULL;
 SemaphoreHandle_t xTimer = NULL;
@@ -15,11 +20,16 @@ SemaphoreHandle_t xAduk = NULL;
 //Pin Definition
 #define SW PA0
 #define TEMP_SENSOR PA7
-
 //PID constants
 #define KP 10
 #define KI 0.011
 
+//pengaduk
+#define pwm PA9 
+#define dir1 PB15 
+#define dir2 PA8
+
+//pemanas
 unsigned long currentTime, previousTime;
 double elapsedTime;
 double error;
@@ -27,7 +37,7 @@ double input, output, setPoint;
 double cumError;
 double dutyCycle = 0;
 
-
+//UI
 // universal needs
 int stateCondition = 0;
 int temperatur = 25, kecepatan = 0;
@@ -36,20 +46,51 @@ unsigned int menit = 0;
 boolean lastButtonState = LOW;
 boolean currentButtonState;
 
-// Fot the rotary encoder
+// For the rotary encoder
 int encoderPin1 = PB14;
 int encoderPin2 = PB13;
 int encoderSwitchPin = PB12; // push button rotary encoder
 volatile int lastEncoded = 0;
 volatile unsigned long encoderValue = 0;
-
 long lastencoderValue = 0; // store the value of rotary encoder
-
 int lastMSB = 0;
 int lastLSB = 0;
-
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+//pengaduk
+// PID controller
+int speed_req;    // in rpm
+float speed_actual = 0;   // in rpm
+double Kp = 9;
+double Kd = 19;
+double Ki = 0.03;
+float error = 0;
+float last_error = 0;
+float sum_error = 0;
+
+int PWM_val = 0;
+float pidTerm = 0;
+volatile int lastEncoded = 0;
+
+// for the encoder
+#define enA PA10
+#define enB PA11
+double newposition;
+double oldposition = 0;
+double vel;
+volatile double encoderValue = 0;
+
+// SimpleKalmanFilter(e_mea, e_est, q);
+// e_mea: Measurement Uncertainty 
+// e_est: Estimation Uncertainty 
+// q: Process Noise
+SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
+
+// MedianFilter<data_type>(window);
+// window: Sample length
+MedianFilter<float> medianFilter(5);
+
 
 void TaskCompute(void* v) {
   if (xSemaphoreTake(xPanas, (TickType_t) portMAX_DELAY) == pdTRUE) {
@@ -116,10 +157,10 @@ void TaskUI(void* v) {
 
   digitalWrite(encoderSwitchPin, HIGH); //turn pullup resistor on
 
-  //call updateEncoder() when any high/low changed seen
+  //call updateEncoderUI() when any high/low changed seen
   //on interrupt 0 (pin 2), or interrupt 1 (pin 3)
-  attachInterrupt(encoderPin1, updateEncoder, CHANGE);
-  attachInterrupt(encoderPin2, updateEncoder, CHANGE);
+  attachInterrupt(encoderPin1, updateEncoderUI, CHANGE);
+  attachInterrupt(encoderPin2, updateEncoderUI, CHANGE);
 
   for (;;) {
     // local array
@@ -438,6 +479,29 @@ void setup() {
               tskIDLE_PRIORITY + 1,
               NULL);
   vTaskStartScheduler();
+
+  //pengaduk
+  pinMode(dir1, OUTPUT);
+  pinMode(dir2, OUTPUT);
+  // pinMode(pwm, OUTPUT);
+  digitalWrite(dir1, LOW);
+  digitalWrite(dir2, HIGH);
+
+  xTaskCreate(
+  TaskSpeedRead_rpm
+  ,  (const portCHAR *)"SpeedRead_rpm"    // A name just for humans
+  ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+  ,  NULL
+  ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+  ,  NULL );
+
+  xTaskCreate(
+  TaskPWMCalculator
+  ,  (const portCHAR *)"PWMCalculator"    // A name just for humans
+  ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
+  ,  NULL
+  ,  0  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+  ,  NULL );
 }
 
 void loop() {
@@ -445,7 +509,7 @@ void loop() {
 }
 
 // interrupt when any change happen
-void updateEncoder() {
+void updateEncoderUI() {
   int MSB = digitalRead(encoderPin1); //MSB = most significant bit
   int LSB = digitalRead(encoderPin2); //LSB = least significant bit
   int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
@@ -475,4 +539,97 @@ double computePID(double inp) {
   previousTime = currentTime;                        //remember current time
 
   return out;                                        //have function return the PID output
+}
+
+//pengaduk
+void TaskPWMCalculator(void *pvParameters)  // This is a task.
+{
+  if (xSemaphoreTake(xAduk, (TickType_t) portMAX_DELAY) == pdTRUE) {
+    (void) pvParameters;
+
+    pinMode(pwm, OUTPUT);
+    speed_req = kecepatan;
+    for (;;) // A Task shall never return or exit.
+    {
+        // speed from low rpm gear
+        error = speed_req - speed_actual;
+        pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki;
+        last_error = error;
+        sum_error += error;
+        sum_error = constrain(sum_error, -4000, 4000);
+        PWM_val = constrain(pidTerm, 39, 255);
+        
+        analogWrite(pwm, PWM_val);
+        printMotorInfo();
+        vTaskDelay(1);
+    }
+  }
+}
+
+void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
+{
+    (void) pvParameters;
+
+    pinMode(enA, INPUT);
+    digitalWrite(enA, HIGH);       // turn on pullup resistor
+    pinMode(enB, INPUT);
+    digitalWrite(enB, HIGH);       // turn on pullup resistor
+    attachInterrupt(enA, updateEncoderMotor, CHANGE);  // encoDER ON PIN 2
+    attachInterrupt(enB, updateEncoderMotor, CHANGE);
+
+    for (;;) // A Task shall never return or exit.
+    {
+        // motor use gear ratio 1 : 46.8512
+        // speed from high rpm gear
+        // Serial.println("haha");
+        newposition = encoderValue / 50;
+        vel = (newposition - oldposition);
+        oldposition = newposition;
+        
+        float real_value = vel;
+
+        // calculate the estimated value with Median Filter
+        float median_value = medianFilter.AddValue(real_value);
+        median_value = median_value * (1000/15) * 60 / 46.8512;
+
+        // calculate the estimated RPM value with Kalman Filter
+        float kalman_value = simpleKalmanFilter.updateEstimate(median_value);
+
+        // filtered value for PID calculation
+        speed_actual = kalman_value; 
+
+        vTaskDelay(1); // delay for 15 ms
+    }
+}
+
+// function for printing data
+void printMotorInfo() {
+    Serial.print("Setpoint: ");    Serial.println(speed_req);
+    Serial.print("Speed RPM: ");    Serial.println(speed_actual);
+    Serial.print("error: ");     Serial.println(error);
+    Serial.print("last error: ");     Serial.println(last_error);
+    Serial.print("sum error: ");     Serial.println(sum_error);
+    Serial.print("PWM_val: ");      Serial.println(PWM_val);
+    Serial.print("PID Term: ");     Serial.println(pidTerm);
+    // // Serial.print(speed_req);
+    // // Serial.print("\t");
+    // Serial.println(speed_actual);
+}
+
+// interrupt when any change happen
+void updateEncoderMotor(){
+    int MSB = digitalRead(enB); //MSB = most significant bit
+    int LSB = digitalRead(enA); //LSB = least significant bit
+    int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number 
+    int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
+
+    if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
+        encoderValue --; 
+    }
+      
+    if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
+        encoderValue ++; 
+    }
+    
+    lastEncoded = encoded; //store this value for next time 
 }
