@@ -20,7 +20,7 @@ double cumError;
 double dutyCycle;
 
 void TaskCompute(void* v) {
-  setPoint = 40;                          //set point at zero degrees
+  setPoint = 80;                          //set point at zero degrees
   Serial.begin(115200);
   pinMode(TEMP_SENSOR, INPUT_ANALOG);
   for (;;) {
