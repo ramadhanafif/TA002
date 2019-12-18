@@ -27,8 +27,6 @@ double input, output, setPoint;
 double cumError;
 double dutyCycle = 0;
 
-//dari UI
-//SoftwareSerial mySerial (6, 7); //RX, TX
 
 // universal needs
 int stateCondition = 0;
@@ -52,7 +50,6 @@ int lastLSB = 0;
 
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
-
 
 void TaskCompute(void* v) {
   if (xSemaphoreTake(xPanas, (TickType_t) portMAX_DELAY) == pdTRUE) {
@@ -86,6 +83,21 @@ void TaskSwitch(void* v) {
     vTaskDelay(200 * dutyCycle);
     digitalWrite(SW, LOW);
     vTaskDelay(200 * (1 - dutyCycle));
+  }
+}
+
+void TaskTimer(void* v) {
+  if (xSemaphoreTake(xTimer, (TickType_t) portMAX_DELAY) == pdTRUE) {
+    unsigned int counter = 0;
+    unsigned int durasi = jam * 3600 + menit * 60;
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    for (;;) {
+      //Recursive part
+      while (counter <= jam) {
+        counter + 1;
+      }
+      vTaskDelayUntil( &xLastWakeTime, 1000); //Perlu dicoba untuk 0 jam 1 menit
+    }
   }
 }
 
@@ -360,7 +372,11 @@ void TaskUI(void* v) {
         stateCondition ++;
         encoderValue = 0;
         menit = atoi(minVal);
+
+        //Release all semaphores
         xSemaphoreGive(xPanas);
+        xSemaphoreGive(xAduk);
+        xSemaphoreGive(xTimer);
       }
 
       lastButtonState = currentButtonState;
@@ -391,13 +407,17 @@ void TaskUI(void* v) {
 void setup() {
   Serial.begin(115200);
 
+  //Create all semaphore
   xPanas = xSemaphoreCreateMutex();
   xTimer = xSemaphoreCreateMutex();
   xAduk = xSemaphoreCreateMutex();
 
+  //Take all sempahore to block other function
   xSemaphoreTake(xPanas, (TickType_t) portMAX_DELAY);
   xSemaphoreTake(xTimer, (TickType_t) portMAX_DELAY);
   xSemaphoreTake(xAduk, (TickType_t) portMAX_DELAY);
+
+
   //pemanas
   xTaskCreate(TaskSwitch,
               "Task1",
