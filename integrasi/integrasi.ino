@@ -8,6 +8,7 @@
 
 // include library Kalman Filter
 #include "SimpleKalmanFilter.h"
+
 // include library Median Filter
 #include "MedianFilterLib.h"
 
@@ -137,7 +138,7 @@ void TaskTimer(void* v) {
       while (counter <= jam) {
         counter + 1;
       }
-      vTaskDelayUntil( &xLastWakeTime, 1000); //Perlu dicoba untuk 0 jam 1 menit
+      vTaskDelayUntil( &xLastWakeTime, 1000);
     }
   }
 }
@@ -611,9 +612,6 @@ void printMotorInfo() {
   Serial.print("sum error: ");     Serial.println(sum_error);
   Serial.print("PWM_val: ");      Serial.println(PWM_val);
   Serial.print("PID Term: ");     Serial.println(pidTerm);
-  // // Serial.print(speed_req);
-  // // Serial.print("\t");
-  // Serial.println(speed_actual);
 }
 
 // interrupt when any change happen
