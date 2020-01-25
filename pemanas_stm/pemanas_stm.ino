@@ -1,34 +1,64 @@
-/* KODE PENGENDALI PEMANAS
+/* KODE PENGENDALI PEMANAS v2
    BOARD: BLACKPILL
 */
 
-#include <MapleFreeRTOS900.h>
+//#include <MapleFreeRTOS900.h>
+
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+#define ONE_WIRE_BUS1 4
+OneWire oneWire1(ONE_WIRE_BUS1);
+DallasTemperature sensor1(&oneWire1);
+
+#define ONE_WIRE_BUS2 15
+OneWire oneWire2(ONE_WIRE_BUS2);
+DallasTemperature sensor2(&oneWire2);
 
 //Pin Definition
-#define SW PA0
-#define TEMP_SENSOR PA7
+#define SW 2
+//#define TEMP_SENSOR 15
+#define BA -0.7
+#define BB 1
 
-//PID constants
-#define KP 10
-#define KI 0.011
+#define TIME_ON 30
 
-unsigned long currentTime, previousTime;
-double elapsedTime;
-double error;
-double input, output, setPoint;
-double cumError;
-double dutyCycle;
+unsigned int state = 0;
+unsigned int ssr = 0;
+
 
 void TaskCompute(void* v) {
+<<<<<<< HEAD
   setPoint = 80;                          //set point at zero degrees
   Serial3.begin(115200);
   pinMode(TEMP_SENSOR, INPUT_ANALOG);
   for (;;) {
     input = analogRead(TEMP_SENSOR);                //read from rotary encoder connected to A0
     input = input / 12.409 ;
+=======
+  Serial.begin(115200);
+>>>>>>> 439011c4d6c60515129d854a67925adfd55c8e91
 
-    output = computePID(input);
+  //  oneWire1.reset();
+  //  oneWire2.reset();
+  //
+  //  oneWire1.search(addr);
+  //  for (int i = 0; i < 8; i++)
+  //  {
+  //    Serial.print(addr[i], HEX);   //show on SM
+  //  }
+  //  oneWire2.search(addr);
+  //  for (int i = 0; i < 8; i++)
+  //  {
+  //    Serial.print(addr[i], HEX);   //show on SM
+  //  }
 
+  double setPoint = 86;                          //set point at zero degrees
+  double input = 0;
+
+  unsigned int prev_input;
+
+<<<<<<< HEAD
     dutyCycle = (double) output / 500.0;
     if (dutyCycle > 1.0)
       dutyCycle = 1;
@@ -43,45 +73,57 @@ void TaskCompute(void* v) {
 }
 
 void TaskSwitch(void* v) {
+=======
+>>>>>>> 439011c4d6c60515129d854a67925adfd55c8e91
   pinMode(SW, OUTPUT);
+  sensor1.begin();
+  sensor2.begin();
+
+  unsigned int state = 0;
+  unsigned int time_on = 0;
   for (;;) {
-    digitalWrite(SW, HIGH);
-    vTaskDelay(200 * dutyCycle);
-    digitalWrite(SW, LOW);
-    vTaskDelay(200 * (1 - dutyCycle));
+    sensor1.requestTemperatures();
+    sensor2.requestTemperatures();
+
+    input = sensor1.getTempCByIndex(0);
+
+    if (setPoint - BB >= input) {
+      if (abs(prev_input - input) < 2) {
+        ssr = 1;
+        for (int i = 0; i < 30; i++) {
+          delay(1000);
+          sensor1.requestTemperatures();
+
+          Serial.print(sensor1.getTempCByIndex(0)); Serial.print(" ");
+          //    Serial.print(sensor2.getTempCByIndex(0)); Serial.print(" ");
+          Serial.print(ssr); Serial.print(" ");
+          Serial.println(state);
+          digitalWrite(SW, ssr);
+        }
+      }
+    }
+    ssr = 0;
+    Serial.print(input); Serial.print(" ");
+    //    Serial.print(sensor2.getTempCByIndex(0)); Serial.print(" ");
+    Serial.print(ssr); Serial.print(" ");
+    Serial.println(state);
+    digitalWrite(SW, ssr);
+
+
+    prev_input = input;
+    vTaskDelay(800);
   }
 }
 
 void setup() {
-  xTaskCreate(TaskSwitch,
-              "Task1",
-              configMINIMAL_STACK_SIZE,
-              NULL,
-              tskIDLE_PRIORITY + 1,
-              NULL);
   xTaskCreate(TaskCompute,
               "Task2",
-              configMINIMAL_STACK_SIZE,
+              1024,
               NULL,
               tskIDLE_PRIORITY + 2,
               NULL);
-  vTaskStartScheduler();
+  //  vTaskStartScheduler();
 }
 
 void loop() {
-}
-
-
-double computePID(double inp) {
-  currentTime = millis() / 1000;              //get current time
-  elapsedTime = (double)(currentTime - previousTime);        //compute time elapsed from previous computation
-
-  error = setPoint - inp;                                // determine error
-  cumError += error * elapsedTime;                // compute integral
-
-  double out = KP * error + KI * cumError;// + kd * rateError;          //PID output
-
-  previousTime = currentTime;                        //remember current time
-
-  return out;                                        //have function return the PID output
 }
