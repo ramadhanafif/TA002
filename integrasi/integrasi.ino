@@ -20,14 +20,19 @@ SemaphoreHandle_t xAduk = NULL;
 //Pin Definition
 #define SW PA0
 #define TEMP_SENSOR PA7
+#define BUZZER PA8
 //PID constants
-#define KP 10
-#define KI 0.011
+#define KP 8 //10
+#define KI 0.005 //0.011
 
 //pengaduk
-#define pwm PA9
+#define pwm PA6
 #define dir1 PB15
 #define dir2 PA8
+
+//Encoder pengaduk
+#define enA PA12
+#define enB PA11
 
 //pemanas
 unsigned long currentTime, previousTime;
@@ -74,8 +79,6 @@ float pidTerm = 0;
 volatile int lastEncoded = 0;
 
 // for the encoder
-#define enA PA10
-#define enB PA11
 double newposition;
 double oldposition = 0;
 double vel;
@@ -94,10 +97,11 @@ MedianFilter<float> medianFilter(5);
 
 void TaskCompute(void* v) {
   if (xSemaphoreTake(xPanas, (TickType_t) portMAX_DELAY) == pdTRUE) {
-    setPoint = temperatur;                          //set point at zero degrees
+    Serial.println("TaskCompute started");
+    setPoint = temperatur;
     pinMode(TEMP_SENSOR, INPUT_ANALOG);
     for (;;) {
-      input = analogRead(TEMP_SENSOR);                //read from rotary encoder connected to A0
+      input = analogRead(TEMP_SENSOR);
       input = input / 12.409;
 
       output = computePID(input);
@@ -109,34 +113,43 @@ void TaskCompute(void* v) {
         dutyCycle = 0;
 
 
-      Serial.print(setPoint); Serial.print(';');
-      Serial.print(input); Serial.println(';');
-      //    Serial.println(dutyCycle * 1);
+      Serial.print("TaskCompute: TEMP = "); Serial.println(input);
+      //      Serial.println(';');
+      //          Serial.println(dutyCycle * 1);
       vTaskDelay(1000);
     }
   }
 }
 
 void TaskSwitch(void* v) {
+  Serial.println("TaskSwitch started");
   pinMode(SW, OUTPUT);
   for (;;) {
     digitalWrite(SW, HIGH);
-    vTaskDelay(200 * dutyCycle);
+    vTaskDelay(2000 * dutyCycle);
     digitalWrite(SW, LOW);
-    vTaskDelay(200 * (1 - dutyCycle));
+    vTaskDelay(2000 * (1 - dutyCycle));
   }
 }
 
 void TaskTimer(void* v) {
   if (xSemaphoreTake(xTimer, (TickType_t) portMAX_DELAY) == pdTRUE) {
+    Serial.println("TaskTimer started");
+    pinMode(BUZZER, OUTPUT);
+    analogWrite(BUZZER, 0);
     unsigned int counter = 0;
     unsigned int durasi = jam * 3600 + menit * 60;
     TickType_t xLastWakeTime = xTaskGetTickCount();
     for (;;) {
       //Recursive part
-      while (counter <= jam) {
-        counter + 1;
+      if (counter <= durasi) {
+        counter++;
       }
+      else if (counter >= durasi) {
+        analogWrite(BUZZER, 255/ 25);
+        Serial.println("buzzer ngiiiing");
+      }
+      Serial.print("Sisa Waktu:");      Serial.println(durasi - counter);
       vTaskDelayUntil( &xLastWakeTime, 1000); //Perlu dicoba untuk 0 jam 1 menit
     }
   }
@@ -144,6 +157,8 @@ void TaskTimer(void* v) {
 
 void TaskUI(void* v) {
   // initialize the LCD
+  //Serial.begin(115200);
+  Serial.println("TaskUI started");
   lcd.begin();
 
   // initialize the rotary encoder
@@ -418,6 +433,10 @@ void TaskUI(void* v) {
         xSemaphoreGive(xPanas);
         xSemaphoreGive(xAduk);
         xSemaphoreGive(xTimer);
+        Serial.print("Temp Set = "); Serial.println(temperatur);
+        Serial.print("Kec Set = "); Serial.println(kecepatan);
+        Serial.print("Jam Set = "); Serial.println(jam);
+        Serial.print("Menit Set = "); Serial.println(menit);
       }
 
       lastButtonState = currentButtonState;
@@ -439,14 +458,13 @@ void TaskUI(void* v) {
 
       lastButtonState = currentButtonState;
     }
-
     // lcd.clear();
   }
-
 }
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("Setup");
 
   //Create all semaphore
   xPanas = xSemaphoreCreateMutex();
@@ -478,7 +496,13 @@ void setup() {
               NULL,
               tskIDLE_PRIORITY + 1,
               NULL);
-  vTaskStartScheduler();
+
+  xTaskCreate(TaskTimer,
+              "Task3",
+              configMINIMAL_STACK_SIZE,
+              NULL,
+              tskIDLE_PRIORITY + 1,
+              NULL);
 
   //pengaduk
   pinMode(dir1, OUTPUT);
@@ -492,7 +516,7 @@ void setup() {
     ,  (const portCHAR *)"SpeedRead_rpm"    // A name just for humans
     ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL );
 
   xTaskCreate(
@@ -500,8 +524,11 @@ void setup() {
     ,  (const portCHAR *)"PWMCalculator"    // A name just for humans
     ,  128  // This stack size can be checked & adjusted by reading the Stack Highwater
     ,  NULL
-    ,  0  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+    ,  1  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
     ,  NULL );
+
+  vTaskStartScheduler();
+  Serial.println("OUT OF RAM");
 }
 
 void loop() {
@@ -546,7 +573,7 @@ void TaskPWMCalculator(void *pvParameters)  // This is a task.
 {
   if (xSemaphoreTake(xAduk, (TickType_t) portMAX_DELAY) == pdTRUE) {
     //(void) pvParameters;
-
+    Serial.println("TaskPWMCalculator Started");
     pinMode(pwm, OUTPUT);
     speed_req = kecepatan;
     for (;;) // A Task shall never return or exit.
@@ -604,13 +631,13 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
 
 // function for printing data
 void printMotorInfo() {
-  Serial.print("Setpoint: ");    Serial.println(speed_req);
-  Serial.print("Speed RPM: ");    Serial.println(speed_actual);
-  Serial.print("error: ");     Serial.println(error_mot);
-  Serial.print("last error: ");     Serial.println(last_error);
-  Serial.print("sum error: ");     Serial.println(sum_error);
-  Serial.print("PWM_val: ");      Serial.println(PWM_val);
-  Serial.print("PID Term: ");     Serial.println(pidTerm);
+  //  Serial.print("Setpoint: ");    Serial.println(speed_req);
+  //  Serial.print("Speed RPM: ");    Serial.println(speed_actual);
+  //  Serial.print("error: ");     Serial.println(error_mot);
+  //  Serial.print("last error: ");     Serial.println(last_error);
+  //  Serial.print("sum error: ");     Serial.println(sum_error);
+  //  Serial.print("PWM_val: ");      Serial.println(PWM_val);
+  //  Serial.print("PID Term: ");     Serial.println(pidTerm);
   // // Serial.print(speed_req);
   // // Serial.print("\t");
   // Serial.println(speed_actual);

@@ -21,11 +21,11 @@ double dutyCycle;
 
 void TaskCompute(void* v) {
   setPoint = 80;                          //set point at zero degrees
-  Serial.begin(115200);
+  Serial3.begin(115200);
   pinMode(TEMP_SENSOR, INPUT_ANALOG);
   for (;;) {
     input = analogRead(TEMP_SENSOR);                //read from rotary encoder connected to A0
-    input = input / 12.409 + 5;
+    input = input / 12.409 ;
 
     output = computePID(input);
 
@@ -35,9 +35,9 @@ void TaskCompute(void* v) {
     else if (dutyCycle < 0.0)
       dutyCycle = 0;
 
-    Serial.print(input); Serial.print(';');
-    Serial.print(output); Serial.print(';');
-    Serial.println(dutyCycle * 1);
+    Serial3.print(input); Serial3.print(';');
+    Serial3.print(output); Serial3.print(';');
+    Serial3.println(dutyCycle * 1);
     vTaskDelay(1000);
   }
 }
