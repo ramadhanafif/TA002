@@ -12,7 +12,7 @@ DallasTemperature sensor2(&oneWire2);
 #define BB 1
 
 #define TIME_ON 30
-#define SET_POINT 8
+#define SET_POINT 75
 
 unsigned int state = 0;
 unsigned int ssr = 0;
@@ -26,11 +26,13 @@ double get_temp(DallasTemperature sensor) {
 
 void TaskPrint(void* v) {
   Serial.begin(115200);
+  TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
   for (;;) {
+    vTaskDelayUntil( &xLastWakeTime, 1000);
     Serial.print(input); Serial.print(" ");
     Serial.print(ssr); Serial.print(" ");
     Serial.println();
-    vTaskDelay(1000);
   }
 }
 
@@ -42,6 +44,8 @@ void TaskCompute(void* v) {
 
   pinMode(SW, OUTPUT);
   sensor2.begin();
+  TickType_t xLastWakeTime;
+
   for (;;) {
     input = get_temp(sensor2);
     switch (ssr)
