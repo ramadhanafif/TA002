@@ -9,16 +9,17 @@ DallasTemperature sensor2(&oneWire2);
 #define SW 2
 //#define TEMP_SENSOR 15
 #define BA -0.7
-#define BB 2
+#define BB 1
 
-#define TIME_ON 60
+#define TIME_ON 30
+#define SET_POINT 8
 
 unsigned int state = 0;
 unsigned int ssr = 0;
-unsigned int input = 0;
+double input = 0;
 unsigned int counter = 0;
 
-int8_t get_temp(DallasTemperature sensor) {
+double get_temp(DallasTemperature sensor) {
   sensor.requestTemperatures();
   return sensor.getTempCByIndex(0);
 }
@@ -34,11 +35,11 @@ void TaskPrint(void* v) {
 }
 
 void TaskCompute(void* v) {
-  double setPoint = 80;                          //set point at zero degrees
+  double setPoint = SET_POINT;                          //set point at zero degrees
   unsigned int prev_input;
   unsigned int state = 0;
   unsigned int time_on = 0;
-  
+
   pinMode(SW, OUTPUT);
   sensor2.begin();
   for (;;) {
@@ -57,13 +58,21 @@ void TaskCompute(void* v) {
       case 1:
         digitalWrite(SW, ssr);
         counter--;
-        if (counter == 0) 
+        if (counter == 0)
+        {
+          ssr = 2;
+        }
+        break;
+      case 2:
+        digitalWrite(SW, 0);
+        counter++;
+        if (counter == TIME_ON)
         {
           ssr = 0;
-        }ß
+        }
         break;
     }
-    
+
     prev_input = input;
     vTaskDelay(1000);
   }
