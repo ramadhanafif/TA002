@@ -146,16 +146,7 @@ void TaskTimer(void* v) {
       if (counter <= durasi) {
         counter++;
       }
-<<<<<<< HEAD
-      else if (counter >= durasi) {
-        analogWrite(BUZZER, 255/ 25);
-        Serial.println("buzzer ngiiiing");
-      }
-      Serial.print("Sisa Waktu:");      Serial.println(durasi - counter);
-      vTaskDelayUntil( &xLastWakeTime, 1000); //Perlu dicoba untuk 0 jam 1 menit
-=======
       vTaskDelayUntil( &xLastWakeTime, 1000);
->>>>>>> 439011c4d6c60515129d854a67925adfd55c8e91
     }
   }
 }
@@ -636,18 +627,6 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
 
 // function for printing data
 void printMotorInfo() {
-<<<<<<< HEAD
-  //  Serial.print("Setpoint: ");    Serial.println(speed_req);
-  //  Serial.print("Speed RPM: ");    Serial.println(speed_actual);
-  //  Serial.print("error: ");     Serial.println(error_mot);
-  //  Serial.print("last error: ");     Serial.println(last_error);
-  //  Serial.print("sum error: ");     Serial.println(sum_error);
-  //  Serial.print("PWM_val: ");      Serial.println(PWM_val);
-  //  Serial.print("PID Term: ");     Serial.println(pidTerm);
-  // // Serial.print(speed_req);
-  // // Serial.print("\t");
-  // Serial.println(speed_actual);
-=======
   Serial.print("Setpoint: ");    Serial.println(speed_req);
   Serial.print("Speed RPM: ");    Serial.println(speed_actual);
   Serial.print("error: ");     Serial.println(error_mot);
@@ -655,7 +634,6 @@ void printMotorInfo() {
   Serial.print("sum error: ");     Serial.println(sum_error);
   Serial.print("PWM_val: ");      Serial.println(PWM_val);
   Serial.print("PID Term: ");     Serial.println(pidTerm);
->>>>>>> 439011c4d6c60515129d854a67925adfd55c8e91
 }
 
 // interrupt when any change happen
