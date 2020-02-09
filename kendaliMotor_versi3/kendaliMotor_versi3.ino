@@ -2,21 +2,21 @@
 #include <Arduino_FreeRTOS.h>
 
 // include library Kalman Filter
-#include <SimpleKalmanFilter.h>
+#include "SimpleKalmanFilter.h"
 
 // include library Median Filter
-#include "MedianFilterLib.h"
+#include "MedianFilter.h"
 
 #define pwm 11 
 #define dir1 4 
 #define dir2 5
 
 // PID controller
-int speed_req = 75;    // in rpm
+int speed_req = 30;    // in rpm
 float speed_actual = 0;   // in rpm
-double Kp = 9;
-double Kd = 19;
-double Ki = 0.03;
+double Kp = 10;
+double Kd = 20;
+double Ki = 0.75;
 float error = 0;
 float last_error = 0;
 float sum_error = 0;
@@ -41,7 +41,7 @@ SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
 // MedianFilter<data_type>(window);
 // window: Sample length
-MedianFilter<float> medianFilter(5);
+MedianFilter medianFilter(3, 0);
 
 void TaskSpeedRead_rpm( void *pvParameters );
 
@@ -103,7 +103,7 @@ void TaskPWMCalculator(void *pvParameters)  // This is a task.
         last_error = error;
         sum_error += error;
         sum_error = constrain(sum_error, -4000, 4000);
-        PWM_val = constrain(pidTerm, 39, 255);
+        PWM_val = constrain(pidTerm, 0, 255);
         
         analogWrite(pwm, PWM_val);
         printMotorInfo();
@@ -132,17 +132,26 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
         vel = (newposition - oldposition);
         oldposition = newposition;
         
-        float real_value = vel;
-
+        float real_value = vel * 1000;
+        // Serial.print(real_value);
+        // Serial.print(',');
+        // converting input to integer
+        int int_real_value = (int)real_value;
+        // Serial.print(medianFilter.in(int_real_value));
+        // Serial.print(',');
         // calculate the estimated value with Median Filter
-        float median_value = medianFilter.AddValue(real_value);
-        median_value = median_value * (1000/15) * 60 / 46.8512;
+        float median_value = medianFilter.in(int_real_value);
+        // Serial.print(median_value);
+        median_value = (median_value / 15) * (60 / 46.8512);
+        // Serial.print(',');
+        // Serial.println(median_value);
 
         // calculate the estimated RPM value with Kalman Filter
         float kalman_value = simpleKalmanFilter.updateEstimate(median_value);
 
         // filtered value for PID calculation
         speed_actual = kalman_value; 
+        // speed_actual = median_value; 
 
         vTaskDelay(1); // delay for 15 ms
     }
@@ -157,8 +166,8 @@ void printMotorInfo() {
     // Serial.print("sum error: ");     Serial.println(sum_error);
     // Serial.print("PWM_val: ");      Serial.println(PWM_val);
     // Serial.print("PID Term: ");     Serial.println(pidTerm);
-    // Serial.print(speed_req);
-    // Serial.print("\t");
+    Serial.print(speed_req);
+    Serial.print("\t");
     Serial.println(speed_actual);
 }
 
