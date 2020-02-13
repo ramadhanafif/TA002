@@ -1,4 +1,4 @@
-#include <Wire.h> 
+#include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 //#include <math.h>
 #define temConstant 25
@@ -18,15 +18,15 @@
 int stateCondition = 0;
 int temperatur = temConstant;
 int kecepatan = kecConstant;
-int jam = jamConstant; 
+int jam = jamConstant;
 int menit = menConstant;
-boolean currentButtonStateGreen; 
+boolean currentButtonStateGreen;
 boolean lastButtonStateGreen = LOW;
-boolean currentButtonStateYellow; 
+boolean currentButtonStateYellow;
 boolean lastButtonStateYellow = LOW;
-boolean currentButtonStateWhite; 
+boolean currentButtonStateWhite;
 boolean lastButtonStateWhite = LOW;
-boolean currentButtonStateBlack; 
+boolean currentButtonStateBlack;
 boolean lastButtonStateBlack = LOW;
 
 volatile int lastEncoded = 0;
@@ -53,292 +53,274 @@ byte arrow[8] = {
 };
 
 void setup() {
-    Serial.begin (112500);
+  Serial.begin (112500);
 
-    // making JSON file for transmiting data
-    // StaticJsonDocument<200> doc;
+  // making JSON file for transmiting data
+  // StaticJsonDocument<200> doc;
 
-    // initialize the LCD
-    lcd.begin();
-    lcd.createChar(0, arrow);
+  // initialize the LCD
+  lcd.begin();
+  lcd.createChar(0, arrow);
 
-    // initialize the rotary encoder
-    pinMode(encoderPin1, INPUT_PULLUP);
-    pinMode(encoderPin2, INPUT_PULLUP);
-    pinMode(switchPinGreen, INPUT_PULLUP);
-    pinMode(switchPinYellow, INPUT_PULLUP);
-    pinMode(switchPinWhite, INPUT_PULLUP);
-    pinMode(switchPinBlack, INPUT_PULLUP);
+  // initialize the rotary encoder
+  pinMode(encoderPin1, INPUT_PULLUP);
+  pinMode(encoderPin2, INPUT_PULLUP);
+  pinMode(switchPinGreen, INPUT_PULLUP);
+  pinMode(switchPinYellow, INPUT_PULLUP);
+  pinMode(switchPinWhite, INPUT_PULLUP);
+  pinMode(switchPinBlack, INPUT_PULLUP);
 
-    digitalWrite(encoderPin1, HIGH); 
-    digitalWrite(encoderPin2, HIGH); 
+  digitalWrite(encoderPin1, HIGH);
+  digitalWrite(encoderPin2, HIGH);
 
-    // call updateEncoder() when any high/low changed seen
-    // on interrupt 0 (pin 2), or interrupt 1 (pin 3)
-    attachInterrupt(encoderPin1, updateEncoder, CHANGE);
-    attachInterrupt(encoderPin2, updateEncoder, CHANGE);
+  // call updateEncoder() when any high/low changed seen
+  // on interrupt 0 (pin 2), or interrupt 1 (pin 3)
+  attachInterrupt(encoderPin1, updateEncoder, CHANGE);
+  attachInterrupt(encoderPin2, updateEncoder, CHANGE);
 
-    xTaskCreate(
-        taskOne,          /* Task function. */
-        "TaskOne",        /* String with name of task. */
-        10000,            /* Stack size in bytes. */
-        NULL,             /* Parameter passed as input of the task */
-        1,                /* Priority of the task. */
-        NULL);            /* Task handle. */
+  xTaskCreate(
+    taskOne,          /* Task function. */
+    "TaskOne",        /* String with name of task. */
+    10000,            /* Stack size in bytes. */
+    NULL,             /* Parameter passed as input of the task */
+    1,                /* Priority of the task. */
+    NULL);            /* Task handle. */
 
-    xTaskCreate(
-        taskTwo,          /* Task function. */
-        "TaskTwo",        /* String with name of task. */
-        10000,            /* Stack size in bytes. */
-        NULL,             /* Parameter passed as input of the task */
-        0,                /* Priority of the task. */
-        NULL);            /* Task handle. */
+  xTaskCreate(
+    taskTwo,          /* Task function. */
+    "TaskTwo",        /* String with name of task. */
+    10000,            /* Stack size in bytes. */
+    NULL,             /* Parameter passed as input of the task */
+    0,                /* Priority of the task. */
+    NULL);            /* Task handle. */
 
-    //vTaskStartScheduler();
+  //vTaskStartScheduler();
 }
 
 void loop() {
-    //printToLCD(50, 60, 1, 30);
-    while (stateCondition == 0) {
-        temperatur = ((encoderValue / 4) % 66) + 25;
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-    } 
 
-    while (stateCondition == 1) {
-        kecepatan = (encoderValue / 4) % 71;
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-    }
-
-    while (stateCondition == 2) {
-        jam = (encoderValue / 4) % 25;            
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-    }
-
-    while (stateCondition == 3) {
-        menit = (encoderValue / 4) % 60;            
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-    }
-
-    while (stateCondition == 4) {
-        if (forward) {
-            lcd.clear();
-            stateCondition ++;
-        } else {
-            lcd.clear();
-            stateCondition --;
-        }
-    } 
-
-    while (stateCondition == 5) {
-        lcd.setCursor(0,0);
-        lcd.print("Lanjutkan Pengadukan");
-        lcd.setCursor(3,1);
-        lcd.print("Ya");
-        lcd.setCursor(3,2);
-        lcd.print("Tidak");
-        if (((encoderValue / 4) % 2) == 0) {
-            lcd.setCursor(9,1);
-            lcd.write(byte(0));
-            lcd.setCursor(9,2);
-            lcd.print(" "); 
-            startProcess = 1;
-            Serial.println(startProcess);   
-        } else {
-            lcd.setCursor(9,1);
-            lcd.print(" "); 
-            lcd.setCursor(9,2);
-            lcd.write(byte(0));
-            startProcess = 0;
-            Serial.println(startProcess);
-        }
-    }
-
-    while (stateCondition == 6) {
-        //Serial.println(startProcess);
-        if (startProcess) {
-            stateCondition = 7;
-        } else {
-            forward = 0;
-            stateCondition = 4;
-        }
-    } 
-
-    while (stateCondition == 7) {
-        Serial.println(stateCondition);
-        Serial.println(forward);
-        lcd.clear();
-    }
-    //vTaskDelay(portMAX_DELAY);
+  //vTaskDelay(portMAX_DELAY);
 }
 
 void taskOne( void * parameter )
 {
- 
-    for( ; ; ){
-        // push button action
-        currentButtonStateGreen = digitalRead(switchPinGreen);
-        vTaskDelay(10);
-        if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
-            //button is not being pushed
-            //do nothing
-        } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH){
-            //button is being pushed
-            stateCondition ++;
-            encoderValue = constantEncoderVal;
-            forward = 1; 
-        }
-        lastButtonStateGreen = currentButtonStateGreen;
 
-        currentButtonStateBlack = digitalRead(switchPinBlack);
-        vTaskDelay(10);
-        if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
-            //button is not being pushed
-            //do nothing
-        } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH){
-            //button is being pushed
-            stateCondition --;
-            encoderValue = constantEncoderVal;
-            forward = 0; 
-        }
-        lastButtonStateBlack = currentButtonStateBlack;
-
-        currentButtonStateWhite = digitalRead(switchPinWhite);
-        vTaskDelay(10);
-        if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
-            //button is not being pushed
-            //do nothing
-        } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH){
-            //button is being pushed
-            stateCondition = 0;
-            encoderValue = constantEncoderVal;
-            temperatur = temConstant;
-            kecepatan = kecConstant;
-            jam = jamConstant;
-            menit = menConstant; 
-            //encoderValue = constantEncoderVal; 
-        }
-        lastButtonStateWhite = currentButtonStateWhite;       
+  for ( ; ; ) {
+    // push button action
+    currentButtonStateGreen = digitalRead(switchPinGreen);
+    vTaskDelay(10);
+    if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
+      //button is not being pushed
+      //do nothing
+    } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
+      //button is being pushed
+      stateCondition ++;
+      encoderValue = constantEncoderVal;
+      forward = 1;
     }
- 
-    Serial.println("Ending task 1"); // Never execute
-    vTaskDelete( NULL );
- 
+    lastButtonStateGreen = currentButtonStateGreen;
+
+    currentButtonStateBlack = digitalRead(switchPinBlack);
+    vTaskDelay(10);
+    if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
+      //button is not being pushed
+      //do nothing
+    } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH) {
+      //button is being pushed
+      stateCondition --;
+      encoderValue = constantEncoderVal;
+      forward = 0;
+    }
+    lastButtonStateBlack = currentButtonStateBlack;
+
+    currentButtonStateWhite = digitalRead(switchPinWhite);
+    vTaskDelay(10);
+    if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
+      //button is not being pushed
+      //do nothing
+    } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
+      //button is being pushed
+      stateCondition = 0;
+      encoderValue = constantEncoderVal;
+      temperatur = temConstant;
+      kecepatan = kecConstant;
+      jam = jamConstant;
+      menit = menConstant;
+      //encoderValue = constantEncoderVal;
+    }
+    lastButtonStateWhite = currentButtonStateWhite;
+  }
 }
 
 void taskTwo( void * parameter)
 {
-    for( ; ; ){
-        //printToLCD(temperatur, kecepatan, jam, menit);
-        Serial.println("Hello World");
-        vTaskDelay(100);
+  for (;;) {
+    switch (stateCondition) {
+      case 0:
+        temperatur = ((encoderValue / 4) % 66) + 25;
+        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        break;
+      case 1:
+        kecepatan = (encoderValue / 4) % 71;
+        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        break;
+
+      case 2:
+        jam = (encoderValue / 4) % 25;
+        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        break;
+      case 3
+          menit = (encoderValue / 4) % 60;
+        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        break;
+      case 4
+          if (forward) {
+            lcd.clear();
+            stateCondition ++;
+          } else {
+            lcd.clear();
+            stateCondition --;
+          }
+        break;
+
+      case 5:
+        lcd.setCursor(0, 0);
+        lcd.print("Lanjutkan Pengadukan");
+        lcd.setCursor(3, 1);
+        lcd.print("Ya");
+        lcd.setCursor(3, 2);
+        lcd.print("Tidak");
+        if (((encoderValue / 4) % 2) == 0) {
+          lcd.setCursor(9, 1);
+          lcd.write(byte(0));
+          lcd.setCursor(9, 2);
+          lcd.print(" ");
+          startProcess = 1;
+          Serial.println(startProcess);
+        } else {
+          lcd.setCursor(9, 1);
+          lcd.print(" ");
+          lcd.setCursor(9, 2);
+          lcd.write(byte(0));
+          startProcess = 0;
+          Serial.println(startProcess);
+        }
+        break;
+
+      case 6:
+        //Serial.println(startProcess);
+        if (startProcess) {
+          stateCondition = 7;
+        } else {
+          forward = 0;
+          stateCondition = 4;
+        }
+      case 7:
+        Serial.println(stateCondition);
+        Serial.println(forward);
+        lcd.clear();
+        break;
     }
-    Serial.println("Ending task 2");
-    vTaskDelete( NULL );
- 
+    vTaskDelay(100);
+  }
 }
 
 // print the status to LCD
 void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC) {
-    // local array
-    char tempVal[4];
-    char spdVal[4];
-    char minVal[4];
-    char hourVal[4];
+  // local array
+  char tempVal[4];
+  char spdVal[4];
+  char minVal[4];
+  char hourVal[4];
 
-    // converting integer to string
-    sprintf(tempVal, "%3d", buffTemp);
-    sprintf(spdVal, "%3d", buffKec);
-    sprintf(hourVal, "%3u", (buffJam % 25));
-    sprintf(minVal, "%3u", (buffMin % 60));
+  // converting integer to string
+  sprintf(tempVal, "%3d", buffTemp);
+  sprintf(spdVal, "%3d", buffKec);
+  sprintf(hourVal, "%3u", (buffJam % 25));
+  sprintf(minVal, "%3u", (buffMin % 60));
 
-    lcd.setCursor(0,0);                     // show character at column 0, row 0
-    lcd.print("Temperatur: ");              // show string on LCD
-    lcd.setCursor(12,0);                    // show character at column 12, row 0
-    lcd.print(tempVal);                     // show the value
-    lcd.setCursor(16,0);                    // show character at column 16, row 0
-    lcd.print((char)223);                   // show string "degree" on LCD
-    lcd.setCursor(17,0);                    // show character at column 17, row 0
-    lcd.print("C");                         // show string on LCD
-    if (buffSC == 0) {
-        lcd.setCursor(19,0);
-        lcd.write(byte(0));
-    } else {
-        lcd.setCursor(19,0);
-        lcd.print(" ");
-    }
+  lcd.setCursor(0, 0);                    // show character at column 0, row 0
+  lcd.print("Temperatur: ");              // show string on LCD
+  lcd.setCursor(12, 0);                   // show character at column 12, row 0
+  lcd.print(tempVal);                     // show the value
+  lcd.setCursor(16, 0);                   // show character at column 16, row 0
+  lcd.print((char)223);                   // show string "degree" on LCD
+  lcd.setCursor(17, 0);                   // show character at column 17, row 0
+  lcd.print("C");                         // show string on LCD
+  if (buffSC == 0) {
+    lcd.setCursor(19, 0);
+    lcd.write(byte(0));
+  } else {
+    lcd.setCursor(19, 0);
+    lcd.print(" ");
+  }
 
-    lcd.setCursor(0,1);                     // show character at column 0, row 1
-    lcd.print("Kecepatan : ");              // show string on LCD
-    lcd.setCursor(12,1);                    // show character at column 12, row 1
-    lcd.print(spdVal);                      // show the value
-    lcd.setCursor(16,1);                    // show character at column 16, row 1
-    lcd.print("RPM");                       // show string on LCD
-    if (buffSC == 1) {
-        lcd.setCursor(19,1);
-        lcd.write(byte(0));
-    } else {
-        lcd.setCursor(19,1);
-        lcd.print(" ");
-    }
+  lcd.setCursor(0, 1);                    // show character at column 0, row 1
+  lcd.print("Kecepatan : ");              // show string on LCD
+  lcd.setCursor(12, 1);                   // show character at column 12, row 1
+  lcd.print(spdVal);                      // show the value
+  lcd.setCursor(16, 1);                   // show character at column 16, row 1
+  lcd.print("RPM");                       // show string on LCD
+  if (buffSC == 1) {
+    lcd.setCursor(19, 1);
+    lcd.write(byte(0));
+  } else {
+    lcd.setCursor(19, 1);
+    lcd.print(" ");
+  }
 
-    lcd.setCursor(0,2);                     // show character at column 0, row 2
-    lcd.print("Durasi    : ");              // show string on LCD
-    lcd.setCursor(12,2);                    // show character at column 12, row 2
-    lcd.print(hourVal);                     // show the value
-    lcd.setCursor(16,2);                    // show character at column 16, row 2
-    lcd.print("JAM");                       // show string on LCD
-    lcd.setCursor(12,3);                    // show character at column 12, row 3
-    lcd.print(minVal);                      // show the value
-    lcd.setCursor(16,3);                    // show character at column 16, row 3
-    lcd.print("MEN");                       // show string on LCD                   
-    if (buffSC == 2) {
-        lcd.setCursor(19,2);
-        lcd.write(byte(0));
-    } else {
-        lcd.setCursor(19,2);
-        lcd.print(" ");
-    }
+  lcd.setCursor(0, 2);                    // show character at column 0, row 2
+  lcd.print("Durasi    : ");              // show string on LCD
+  lcd.setCursor(12, 2);                   // show character at column 12, row 2
+  lcd.print(hourVal);                     // show the value
+  lcd.setCursor(16, 2);                   // show character at column 16, row 2
+  lcd.print("JAM");                       // show string on LCD
+  lcd.setCursor(12, 3);                   // show character at column 12, row 3
+  lcd.print(minVal);                      // show the value
+  lcd.setCursor(16, 3);                   // show character at column 16, row 3
+  lcd.print("MEN");                       // show string on LCD
+  if (buffSC == 2) {
+    lcd.setCursor(19, 2);
+    lcd.write(byte(0));
+  } else {
+    lcd.setCursor(19, 2);
+    lcd.print(" ");
+  }
 
-    lcd.setCursor(0,2);                     // show character at column 0, row 2
-    lcd.print("Durasi    : ");              // show string on LCD
-    lcd.setCursor(12,2);                    // show character at column 12, row 2
-    lcd.print(hourVal);                     // show the value
-    lcd.setCursor(16,2);                    // show character at column 16, row 2
-    lcd.print("JAM");                       // show string on LCD
-    lcd.setCursor(12,3);                    // show character at column 12, row 3
-    lcd.print(minVal);                      // show the value
-    lcd.setCursor(16,3);                    // show character at column 16, row 3
-    lcd.print("MEN");                       // show string on LCD                   
-    if (buffSC == 3) {
-        lcd.setCursor(19,3);
-        lcd.write(byte(0));
-    } else {
-        lcd.setCursor(19,3);
-        lcd.print(" ");
-    }
+  lcd.setCursor(0, 2);                    // show character at column 0, row 2
+  lcd.print("Durasi    : ");              // show string on LCD
+  lcd.setCursor(12, 2);                   // show character at column 12, row 2
+  lcd.print(hourVal);                     // show the value
+  lcd.setCursor(16, 2);                   // show character at column 16, row 2
+  lcd.print("JAM");                       // show string on LCD
+  lcd.setCursor(12, 3);                   // show character at column 12, row 3
+  lcd.print(minVal);                      // show the value
+  lcd.setCursor(16, 3);                   // show character at column 16, row 3
+  lcd.print("MEN");                       // show string on LCD
+  if (buffSC == 3) {
+    lcd.setCursor(19, 3);
+    lcd.write(byte(0));
+  } else {
+    lcd.setCursor(19, 3);
+    lcd.print(" ");
+  }
 
-    // convert string to integer
-    // temperatur = atoi(tempVal);
-    // kecepatan = atoi(spdVal);
-    // jam = atoi(hourVal);
-    // menit = atoi(minVal);
-  
 }
 
 // interrupt when any change happen
-void updateEncoder(){
-    int MSB = digitalRead(encoderPin1); //MSB = most significant bit
-    int LSB = digitalRead(encoderPin2); //LSB = least significant bit
-    int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number 
-    int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
+void updateEncoder() {
+  int MSB = digitalRead(encoderPin1); //MSB = most significant bit
+  int LSB = digitalRead(encoderPin2); //LSB = least significant bit
+  int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
+  int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
 
-    if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
-        encoderValue --; 
-    }
-      
-    if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
-        encoderValue ++; 
-    }
-    
-    lastEncoded = encoded; //store this value for next time 
+  if (sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) {
+    encoderValue --;
+  }
+
+  if (sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) {
+    encoderValue ++;
+  }
+
+  lastEncoded = encoded; //store this value for next time
 }
