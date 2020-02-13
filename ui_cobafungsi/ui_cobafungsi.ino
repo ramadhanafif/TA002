@@ -63,8 +63,8 @@ void setup() {
     lcd.createChar(0, arrow);
 
     // initialize the rotary encoder
-    pinMode(encoderPin1, INPUT);
-    pinMode(encoderPin2, INPUT);
+    pinMode(encoderPin1, INPUT_PULLUP);
+    pinMode(encoderPin2, INPUT_PULLUP);
     pinMode(switchPinGreen, INPUT_PULLUP);
     pinMode(switchPinYellow, INPUT_PULLUP);
     pinMode(switchPinWhite, INPUT_PULLUP);
@@ -72,10 +72,6 @@ void setup() {
 
     digitalWrite(encoderPin1, HIGH); 
     digitalWrite(encoderPin2, HIGH); 
-    digitalWrite(switchPinGreen, LOW);
-    digitalWrite(switchPinYellow, LOW);
-    digitalWrite(switchPinWhite, LOW);
-    digitalWrite(switchPinBlack, LOW);
 
     // call updateEncoder() when any high/low changed seen
     // on interrupt 0 (pin 2), or interrupt 1 (pin 3)
