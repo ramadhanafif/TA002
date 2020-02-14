@@ -1,12 +1,11 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-//#include <math.h>
+
 #define temConstant 25
 #define kecConstant 0
 #define jamConstant 0
 #define menConstant 0
 #define constantEncoderVal 28116000
-//#define encoderSwitchPin 5 // push button rotary encoder
 #define encoderPin1 19
 #define encoderPin2 18
 #define switchPinGreen 5
@@ -20,6 +19,7 @@ int temperatur = temConstant;
 int kecepatan = kecConstant;
 int jam = jamConstant;
 int menit = menConstant;
+
 boolean currentButtonStateGreen;
 boolean lastButtonStateGreen = LOW;
 boolean currentButtonStateYellow;
@@ -55,13 +55,30 @@ byte arrow[8] = {
 void setup() {
   Serial.begin (112500);
 
-  // making JSON file for transmiting data
-  // StaticJsonDocument<200> doc;
+  xTaskCreate(
+    taskInput,          /* Task function. */
+    "TaskOne",        /* String with name of task. */
+    10000,            /* Stack size in bytes. */
+    NULL,             /* Parameter passed as input of the task */
+    1,                /* Priority of the task. */
+    NULL);            /* Task handle. */
 
-  // initialize the LCD
-  lcd.begin();
-  lcd.createChar(0, arrow);
+  xTaskCreate(
+    taskDisplay,          /* Task function. */
+    "TaskTwo",        /* String with name of task. */
+    10000,            /* Stack size in bytes. */
+    NULL,             /* Parameter passed as input of the task */
+    0,                /* Priority of the task. */
+    NULL);            /* Task handle. */
 
+}
+
+void loop() {
+  vTaskDelay(portMAX_DELAY);
+}
+
+void taskInput( void * parameter )
+{
   // initialize the rotary encoder
   pinMode(encoderPin1, INPUT_PULLUP);
   pinMode(encoderPin2, INPUT_PULLUP);
@@ -77,33 +94,6 @@ void setup() {
   // on interrupt 0 (pin 2), or interrupt 1 (pin 3)
   attachInterrupt(encoderPin1, updateEncoder, CHANGE);
   attachInterrupt(encoderPin2, updateEncoder, CHANGE);
-
-  xTaskCreate(
-    taskOne,          /* Task function. */
-    "TaskOne",        /* String with name of task. */
-    10000,            /* Stack size in bytes. */
-    NULL,             /* Parameter passed as input of the task */
-    1,                /* Priority of the task. */
-    NULL);            /* Task handle. */
-
-  xTaskCreate(
-    taskTwo,          /* Task function. */
-    "TaskTwo",        /* String with name of task. */
-    10000,            /* Stack size in bytes. */
-    NULL,             /* Parameter passed as input of the task */
-    0,                /* Priority of the task. */
-    NULL);            /* Task handle. */
-
-  //vTaskStartScheduler();
-}
-
-void loop() {
-
-  //vTaskDelay(portMAX_DELAY);
-}
-
-void taskOne( void * parameter )
-{
 
   for ( ; ; ) {
     // push button action
@@ -152,8 +142,12 @@ void taskOne( void * parameter )
   }
 }
 
-void taskTwo( void * parameter)
+void taskDisplay( void * parameter)
 {
+  // initialize the LCD
+  lcd.begin();
+  lcd.createChar(0, arrow);
+
   for (;;) {
     switch (stateCondition) {
       case 0:
@@ -164,16 +158,15 @@ void taskTwo( void * parameter)
         kecepatan = (encoderValue / 4) % 71;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
-
       case 2:
         jam = (encoderValue / 4) % 25;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
-      case 3
+      case 3:
           menit = (encoderValue / 4) % 60;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
-      case 4
+      case 4:
           if (forward) {
             lcd.clear();
             stateCondition ++;
@@ -182,7 +175,6 @@ void taskTwo( void * parameter)
             stateCondition --;
           }
         break;
-
       case 5:
         lcd.setCursor(0, 0);
         lcd.print("Lanjutkan Pengadukan");
@@ -197,7 +189,8 @@ void taskTwo( void * parameter)
           lcd.print(" ");
           startProcess = 1;
           Serial.println(startProcess);
-        } else {
+        }
+        else {
           lcd.setCursor(9, 1);
           lcd.print(" ");
           lcd.setCursor(9, 2);
@@ -206,12 +199,12 @@ void taskTwo( void * parameter)
           Serial.println(startProcess);
         }
         break;
-
       case 6:
         //Serial.println(startProcess);
         if (startProcess) {
           stateCondition = 7;
-        } else {
+        }
+        else {
           forward = 0;
           stateCondition = 4;
         }
@@ -250,7 +243,8 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   if (buffSC == 0) {
     lcd.setCursor(19, 0);
     lcd.write(byte(0));
-  } else {
+  } 
+  else {
     lcd.setCursor(19, 0);
     lcd.print(" ");
   }
