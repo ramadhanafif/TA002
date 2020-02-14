@@ -63,14 +63,14 @@ void setup() {
     1,                /* Priority of the task. */
     NULL);            /* Task handle. */
 
-  xTaskCreate(
-    taskDisplay,          /* Task function. */
-    "TaskTwo",        /* String with name of task. */
-    10000,            /* Stack size in bytes. */
-    NULL,             /* Parameter passed as input of the task */
-    0,                /* Priority of the task. */
-    NULL);            /* Task handle. */
-
+//  xTaskCreate(
+//    taskDisplay,          /* Task function. */
+//    "TaskTwo",        /* String with name of task. */
+//    10000,            /* Stack size in bytes. */
+//    NULL,             /* Parameter passed as input of the task */
+//    10,                /* Priority of the task. */
+//    NULL);            /* Task handle. */
+    taskDisplay(NULL);
 }
 
 void loop() {
@@ -206,7 +206,7 @@ void taskDisplay( void * parameter)
         }
         else {
           forward = 0;
-          stateCondition = 4;
+          stateCondition = 0;
         }
       case 7:
         Serial.println(stateCondition);
