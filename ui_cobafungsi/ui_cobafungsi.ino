@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+#define length 20.0
 #define temConstant 25
 #define kecConstant 0
 #define jamConstant 0
@@ -42,6 +43,7 @@ boolean startProcess = 1;
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
+// create arrow char
 byte arrow[8] = {
   B00011,
   B00111,
@@ -50,7 +52,58 @@ byte arrow[8] = {
   B01111,
   B00111,
   B00011,
-};
+  B00000};
+
+// create char for loading bar
+byte p1[8] = {
+  0x10,
+  0x10,
+  0x10,
+  0x10,
+  0x10,
+  0x10,
+  0x10,
+  0x10};
+
+byte p2[8] = {
+  0x18,
+  0x18,
+  0x18,
+  0x18,
+  0x18,
+  0x18,
+  0x18,
+  0x18};
+
+byte p3[8] = {
+  0x1C,
+  0x1C,
+  0x1C,
+  0x1C,
+  0x1C,
+  0x1C,
+  0x1C,
+  0x1C};
+
+byte p4[8] = {
+  0x1E,
+  0x1E,
+  0x1E,
+  0x1E,
+  0x1E,
+  0x1E,
+  0x1E,
+  0x1E};
+
+byte p5[8] = {
+  0x1F,
+  0x1F,
+  0x1F,
+  0x1F,
+  0x1F,
+  0x1F,
+  0x1F,
+  0x1F};
 
 void setup() {
   Serial.begin (112500);
@@ -70,7 +123,7 @@ void setup() {
 //    NULL,             /* Parameter passed as input of the task */
 //    10,                /* Priority of the task. */
 //    NULL);            /* Task handle. */
-    taskDisplay(NULL);
+  taskDisplay(NULL);
 }
 
 void loop() {
@@ -147,9 +200,20 @@ void taskDisplay( void * parameter)
   // initialize the LCD
   lcd.begin();
   lcd.createChar(0, arrow);
+  lcd.createChar(1, p1);
+  lcd.createChar(2, p2);
+  lcd.createChar(3, p3);
+  lcd.createChar(4, p4);
+  lcd.createChar(5, p5);
+
+  unsigned int value = 0;
 
   for (;;) {
     switch (stateCondition) {
+      case -1:
+        lcd.clear();
+        stateCondition++;
+        break;
       case 0:
         temperatur = ((encoderValue / 4) % 66) + 25;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
@@ -163,17 +227,17 @@ void taskDisplay( void * parameter)
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
       case 3:
-          menit = (encoderValue / 4) % 60;
+        menit = (encoderValue / 4) % 60;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
       case 4:
-          if (forward) {
-            lcd.clear();
-            stateCondition ++;
-          } else {
-            lcd.clear();
-            stateCondition --;
-          }
+        if (forward) {
+          lcd.clear();
+          stateCondition ++;
+        } else {
+          lcd.clear();
+          stateCondition --;
+        }
         break;
       case 5:
         lcd.setCursor(0, 0);
@@ -203,16 +267,58 @@ void taskDisplay( void * parameter)
         //Serial.println(startProcess);
         if (startProcess) {
           stateCondition = 7;
+          lcd.clear();
         }
         else {
-          forward = 0;
-          stateCondition = 0;
+          forward = 1;
+          stateCondition = -1;
         }
-      case 7:
-        Serial.println(stateCondition);
-        Serial.println(forward);
-        lcd.clear();
         break;
+      case 7:
+        // local variable
+        unsigned int peace;
+        double percent;
+
+        lcd.setCursor(0,0);
+        lcd.print("Memanaskan");
+
+        // calculation from sensor read
+        vTaskDelay(10);
+        value++;
+        value = constrain(value, 0, 99);
+
+        if (value == 99) {
+          stateCondition++;
+        }
+
+        percent = value;
+        double possition = (length / 100 * percent);
+
+        lcd.setCursor(possition,2);
+        peace = (int)(possition * 5) % 5;
+    
+        // drawing charater's colums
+        switch (peace) {
+          case 0:
+            lcd.write(byte(1));
+            break;
+          case 1:
+            lcd.write(byte(2));
+            break;
+          case 2:
+            lcd.write(byte(3));
+            break;
+          case 3:
+            lcd.write(byte(4));
+            break;
+          case 4:
+            lcd.write(byte(5));
+            break;
+        }
+        break;
+      // case 8: 
+      //   lcd.clear();
+      //   break;           
     }
     vTaskDelay(100);
   }
@@ -298,7 +404,6 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
     lcd.setCursor(19, 3);
     lcd.print(" ");
   }
-
 }
 
 // interrupt when any change happen
