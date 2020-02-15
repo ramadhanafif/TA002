@@ -5,7 +5,7 @@
 #include "SimpleKalmanFilter.h"
 
 #define pwm 5 
-#define enA 2
+#define encoderMotor 2
 
 // setting PWM properties
 const int freq = 256000;
@@ -24,13 +24,12 @@ float sum_error = 0;
 
 int PWM_val = 0;
 float pidTerm = 0;
-volatile int lastEncoded = 0;
 
 // for the encoder
 double newposition;
 double oldposition = 0;
 double vel;
-volatile double encoderValue = 0;
+volatile double encoderMotorValue = 0;
 
 // SimpleKalmanFilter(e_mea, e_est, q);
 // e_mea: Measurement Uncertainty 
@@ -105,15 +104,15 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
 {
     (void) pvParameters;
 
-    pinMode(enA, INPUT_PULLUP);
-    attachInterrupt(enA, updateEncoder, CHANGE);    // encoderValue will increase whenever any CHANGE
+    pinMode(encoderMotor, INPUT_PULLUP);
+    attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);    // encoderMotorValue will increase whenever any CHANGE
 
     for (;;) // A Task shall never return or exit.
     {
         // motor use gear ratio 1 : 46.8512
         // speed from high speed gear
-        // every 1 rotation encoderValue equal to 22
-        newposition = encoderValue / 22;
+        // every 1 rotation encoderMotorValue equal to 22
+        newposition = encoderMotorValue / 22;
         vel = (newposition - oldposition);
         oldposition = newposition;
         
@@ -150,6 +149,6 @@ void printMotorInfo() {
 }
 
 // interrupt when any change happen
-void updateEncoder(){
-    encoderValue ++;
+void updateEncoderMotor(){
+    encoderMotorValue ++;
 }
