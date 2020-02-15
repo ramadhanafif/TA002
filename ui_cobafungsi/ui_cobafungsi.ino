@@ -168,7 +168,7 @@ void setup() {
     "SpeedRead_rpm",    /* String with name of task. */
     10000,              /* Stack size in bytes. */
     NULL,               /* Parameter passed as input of the task */
-    1,                  /* Priority of the task. */
+    3,                  /* Priority of the task. */
     NULL );             /* Task handle. */
 
   xTaskCreate(
@@ -263,6 +263,8 @@ void taskInput( void * parameter )
       //encoderValue = constantEncoderVal;
     }
     lastButtonStateWhite = currentButtonStateWhite;
+
+    Serial.println("Task Input");
   }
 }
 
@@ -287,6 +289,7 @@ void taskDisplay( void * parameter)
   for (;;) {
     switch (stateCondition) {
       case -1:
+        speed_req = 0;
         lcd.clear();
         stateCondition++;
         break;
@@ -350,15 +353,16 @@ void taskDisplay( void * parameter)
           stateCondition = -1;
         }
         break;
-      case 8:
+      case 8:   // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
         lcd.clear();
-        Serial.print(temperatur);
-        Serial.print(" ");
-        Serial.print(kecepatan);
-        Serial.print(" ");
-        Serial.print(jam);
-        Serial.print(" ");
-        Serial.println(menit);
+        // Serial.print(temperatur);
+        // Serial.print(" ");
+        // Serial.print(kecepatan);
+        // Serial.print(" ");
+        // Serial.print(jam);
+        // Serial.print(" ");
+        // Serial.println(menit);
+        speed_req = kecepatan;
         break;
       case 7:
         // local variable
@@ -375,6 +379,7 @@ void taskDisplay( void * parameter)
 
         if (value == 99) {
           stateCondition++;
+          value = 0;
         }
 
         percent = value;
@@ -408,7 +413,6 @@ void taskDisplay( void * parameter)
   }
 }
 
-
 void TaskPWMCalculator(void *pvParameters)  // This is a task.
 {
   (void) pvParameters;
@@ -441,7 +445,7 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
   (void) pvParameters;
 
   pinMode(encoderMotor, INPUT_PULLUP);
-  attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);    // encoderMotorValue will increase whenever any CHANGE
+  attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);
 
   for (;;) {  // A Task shall never return or exit.
     // motor use gear ratio 1 : 46.8512
@@ -463,6 +467,7 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
     speed_actual = real_valueRPM;
 
     Serial.println("Task Speed Read");
+    printMotorInfo();
     vTaskDelay(20);       
   }
 }
