@@ -1,7 +1,15 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+/*---------------------------------------------------------------------*/
+/*-----------------------------LIBRARIES-------------------------------*/
+/*---------------------------------------------------------------------*/
+#include "Wire.h"
+#include "LiquidCrystal_I2C.h"    // include library LCD I2C
+#include "SimpleKalmanFilter.h"   // include library Kalman Filter
 
-#define length 20.0
+
+/*---------------------------------------------------------------------*/
+/*--------------------------CONSTANS & PINS----------------------------*/
+/*---------------------------------------------------------------------*/
+#define columnLength 20.0
 #define temConstant 25
 #define kecConstant 0
 #define jamConstant 0
@@ -13,7 +21,13 @@
 #define switchPinYellow 17
 #define switchPinWhite 16
 #define switchPinBlack 4
+#define pwm 2 
+#define encoderMotor 15
 
+
+/*---------------------------------------------------------------------*/
+/*-----------------------------VARIABLES-------------------------------*/
+/*---------------------------------------------------------------------*/
 // universal needs
 int stateCondition = 0;
 int temperatur = temConstant;
@@ -36,13 +50,50 @@ long lastencoderValue = 0; // store the value of rotary encoder
 int lastMSB = 0;
 int lastLSB = 0;
 
-// flag
+// setting PWM properties
+const int freq = 256000;
+const int pwmChannel = 0;
+const int resolution = 8;
+
+// PID controller
+int speed_req = 0;        // in rpm
+float speed_actual = 0;   // in rpm
+double Kp = 12;
+double Kd = 12;
+double Ki = 0.7;
+float error = 0;
+float last_error = 0;
+float sum_error = 0;
+int PWM_val = 0;
+float pidTerm = 0;
+
+// for the encoder
+double newposition;
+double oldposition = 0;
+double vel;
+volatile double encoderMotorValue = 0;
+
+// flag for LCD state needs
 boolean forward = 1;
 boolean startProcess = 1;
+
+
+/*---------------------------------------------------------------------*/
+/*------------------------------OBJECTS--------------------------------*/
+/*---------------------------------------------------------------------*/
+// SimpleKalmanFilter(e_mea, e_est, q);
+// e_mea: Measurement Uncertainty 
+// e_est: Estimation Uncertainty 
+// q: Process Noise
+SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
+
+/*---------------------------------------------------------------------*/
+/*-----------------------------CHAR LIBS-------------------------------*/
+/*---------------------------------------------------------------------*/
 // create arrow char
 byte arrow[8] = {
   B00011,
@@ -105,31 +156,59 @@ byte p5[8] = {
   0x1F,
   0x1F};
 
+
+/*---------------------------------------------------------------------*/
+/*-------------------------------SETUP---------------------------------*/
+/*---------------------------------------------------------------------*/
 void setup() {
   Serial.begin (112500);
 
   xTaskCreate(
-    taskInput,          /* Task function. */
-    "TaskOne",        /* String with name of task. */
-    10000,            /* Stack size in bytes. */
-    NULL,             /* Parameter passed as input of the task */
-    1,                /* Priority of the task. */
-    NULL);            /* Task handle. */
+    TaskSpeedRead_rpm,  /* Task function. */
+    "SpeedRead_rpm",    /* String with name of task. */
+    10000,              /* Stack size in bytes. */
+    NULL,               /* Parameter passed as input of the task */
+    1,                  /* Priority of the task. */
+    NULL );             /* Task handle. */
 
-//  xTaskCreate(
-//    taskDisplay,          /* Task function. */
-//    "TaskTwo",        /* String with name of task. */
-//    10000,            /* Stack size in bytes. */
-//    NULL,             /* Parameter passed as input of the task */
-//    10,                /* Priority of the task. */
-//    NULL);            /* Task handle. */
+  xTaskCreate(
+    TaskPWMCalculator,  /* Task function. */
+    "PWMCalculator",    /* String with name of task. */
+    10000,              /* Stack size in bytes. */
+    NULL,               /* Parameter passed as input of the task */
+    2,                  /* Priority of the task. */
+    NULL);              /* Task handle. */
+
+  xTaskCreate(
+    taskInput,          /* Task function. */
+    "TaskOne",          /* String with name of task. */
+    10000,              /* Stack size in bytes. */
+    NULL,               /* Parameter passed as input of the task */
+    3,                  /* Priority of the task. */
+    NULL);              /* Task handle. */
+
+  //  xTaskCreate(
+  //    taskDisplay,      /* Task function. */
+  //    "TaskTwo",        /* String with name of task. */
+  //    10000,            /* Stack size in bytes. */
+  //    NULL,             /* Parameter passed as input of the task */
+  //    10,               /* Priority of the task. */
+  //    NULL);            /* Task handle. */
   taskDisplay(NULL);
 }
 
+
+/*---------------------------------------------------------------------*/
+/*-------------------------------LOOP----------------------------------*/
+/*---------------------------------------------------------------------*/
 void loop() {
   vTaskDelay(portMAX_DELAY);
 }
 
+
+/*---------------------------------------------------------------------*/
+/*-------------------------------TASKS---------------------------------*/
+/*---------------------------------------------------------------------*/
 void taskInput( void * parameter )
 {
   // initialize the rotary encoder
@@ -139,14 +218,6 @@ void taskInput( void * parameter )
   pinMode(switchPinYellow, INPUT_PULLUP);
   pinMode(switchPinWhite, INPUT_PULLUP);
   pinMode(switchPinBlack, INPUT_PULLUP);
-
-  digitalWrite(encoderPin1, HIGH);
-  digitalWrite(encoderPin2, HIGH);
-
-  // call updateEncoder() when any high/low changed seen
-  // on interrupt 0 (pin 2), or interrupt 1 (pin 3)
-  attachInterrupt(encoderPin1, updateEncoder, CHANGE);
-  attachInterrupt(encoderPin2, updateEncoder, CHANGE);
 
   for ( ; ; ) {
     // push button action
@@ -183,7 +254,7 @@ void taskInput( void * parameter )
       //do nothing
     } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
       //button is being pushed
-      stateCondition = 0;
+      stateCondition = -1;
       encoderValue = constantEncoderVal;
       temperatur = temConstant;
       kecepatan = kecConstant;
@@ -197,6 +268,11 @@ void taskInput( void * parameter )
 
 void taskDisplay( void * parameter)
 {
+  // call updateEncoder() when any high/low changed seen
+  // on interrupt 0 (pin 2), or interrupt 1 (pin 3)
+  attachInterrupt(encoderPin1, updateEncoder, CHANGE);
+  attachInterrupt(encoderPin2, updateEncoder, CHANGE);
+  
   // initialize the LCD
   lcd.begin();
   lcd.createChar(0, arrow);
@@ -274,6 +350,16 @@ void taskDisplay( void * parameter)
           stateCondition = -1;
         }
         break;
+      case 8:
+        lcd.clear();
+        Serial.print(temperatur);
+        Serial.print(" ");
+        Serial.print(kecepatan);
+        Serial.print(" ");
+        Serial.print(jam);
+        Serial.print(" ");
+        Serial.println(menit);
+        break;
       case 7:
         // local variable
         unsigned int peace;
@@ -292,7 +378,7 @@ void taskDisplay( void * parameter)
         }
 
         percent = value;
-        double possition = (length / 100 * percent);
+        double possition = (columnLength / 100 * percent);
 
         lcd.setCursor(possition,2);
         peace = (int)(possition * 5) % 5;
@@ -315,15 +401,76 @@ void taskDisplay( void * parameter)
             lcd.write(byte(5));
             break;
         }
-        break;
-      // case 8: 
-      //   lcd.clear();
-      //   break;           
+        break;        
     }
+    Serial.println("Task Display");
     vTaskDelay(100);
   }
 }
 
+
+void TaskPWMCalculator(void *pvParameters)  // This is a task.
+{
+  (void) pvParameters;
+
+  ledcSetup(pwmChannel, freq, resolution);
+
+  // attach the channel to the GPIO to be controlled
+  ledcAttachPin(pwm, pwmChannel);
+
+  for (;;) {  // A Task shall never return or exit.
+    // PID calculation
+    error = speed_req - speed_actual;
+    pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki;
+    last_error = error;
+    sum_error += error;
+    sum_error = constrain(sum_error, -2000, 2000);
+    PWM_val = constrain(pidTerm, 0, 255);
+    
+    // PWM signal
+    ledcWrite(pwmChannel, PWM_val);
+
+    // printMotorInfo();
+    Serial.println("Task PWM Calculator");
+    vTaskDelay(40);
+  }   
+}
+
+void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
+{
+  (void) pvParameters;
+
+  pinMode(encoderMotor, INPUT_PULLUP);
+  attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);    // encoderMotorValue will increase whenever any CHANGE
+
+  for (;;) {  // A Task shall never return or exit.
+    // motor use gear ratio 1 : 46.8512
+    // speed from high speed gear
+    // every 1 rotation encoderMotorValue equal to 22
+    newposition = encoderMotorValue / 22;
+    vel = (newposition - oldposition);
+    oldposition = newposition;
+    
+    float real_valueRPS = vel * 50;    // rps
+    // Serial.print(real_valueRPS);
+    // Serial.print(" ");
+
+    // filtering the sensor read
+    real_valueRPS = simpleKalmanFilter.updateEstimate(real_valueRPS);
+
+    // speed from slow speed gear
+    float real_valueRPM = (real_valueRPS / 46.8512) * 60;
+    speed_actual = real_valueRPM;
+
+    Serial.println("Task Speed Read");
+    vTaskDelay(20);       
+  }
+}
+
+
+/*---------------------------------------------------------------------*/
+/*------------------------------FUNCTIONS------------------------------*/
+/*---------------------------------------------------------------------*/
 // print the status to LCD
 void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC) {
   // local array
@@ -404,6 +551,25 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
     lcd.setCursor(19, 3);
     lcd.print(" ");
   }
+}
+
+// function for printing data
+void printMotorInfo() {
+  // Serial.print("Setpoint: ");    Serial.println(speed_req);
+  // Serial.print("Speed RPM: ");    Serial.println(speed_actual);
+  // Serial.print("error: ");     Serial.println(error);
+  // Serial.print("last error: ");     Serial.println(last_error);
+  // Serial.print("sum error: ");     Serial.println(sum_error);
+  // Serial.print("PWM_val: ");      Serial.println(PWM_val);
+  // Serial.print("PID Term: ");     Serial.println(pidTerm);
+  Serial.print(speed_req);
+  Serial.print("\t");
+  Serial.println(speed_actual);
+}
+
+// interrupt when any change happen
+void updateEncoderMotor(){
+  encoderMotorValue ++;
 }
 
 // interrupt when any change happen
