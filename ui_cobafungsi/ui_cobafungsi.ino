@@ -58,9 +58,12 @@ const int resolution = 8;
 // PID controller
 int speed_req = 0;        // in rpm
 float speed_actual = 0;   // in rpm
-double Kp = 12;
-double Kd = 12;
-double Ki = 0.7;
+// double Kp = 12;
+// double Kd = 12;
+// double Ki = 0.7;
+double Kp = 0.5;
+double Kd = 0.01;
+double Ki = 0.03;
 float error = 0;
 float last_error = 0;
 float sum_error = 0;
@@ -264,7 +267,7 @@ void taskInput( void * parameter )
     }
     lastButtonStateWhite = currentButtonStateWhite;
 
-    Serial.println("Task Input");
+    // Serial.println("Task Input");
   }
 }
 
@@ -374,7 +377,7 @@ void taskDisplay( void * parameter)
 
         // calculation from sensor read
         vTaskDelay(10);
-        value++;
+        value += 10;
         value = constrain(value, 0, 99);
 
         if (value == 99) {
@@ -408,7 +411,7 @@ void taskDisplay( void * parameter)
         }
         break;        
     }
-    Serial.println("Task Display");
+    // Serial.println("Task Display");
     vTaskDelay(100);
   }
 }
@@ -424,18 +427,23 @@ void TaskPWMCalculator(void *pvParameters)  // This is a task.
 
   for (;;) {  // A Task shall never return or exit.
     // PID calculation
-    error = speed_req - speed_actual;
-    pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki;
-    last_error = error;
-    sum_error += error;
-    sum_error = constrain(sum_error, -2000, 2000);
-    PWM_val = constrain(pidTerm, 0, 255);
-    
-    // PWM signal
-    ledcWrite(pwmChannel, PWM_val);
+    if (speed_req == 0) {
+      // PWM signal
+      ledcWrite(pwmChannel, 0);
+    } else {
+      error = speed_req - speed_actual;
+      pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki + 185;
+      last_error = error;
+      sum_error += error;
+      sum_error = constrain(sum_error, -2000, 2000);
+      PWM_val = constrain(pidTerm, 0, 255);
+      
+      // PWM signal
+      ledcWrite(pwmChannel, PWM_val);
 
-    // printMotorInfo();
-    Serial.println("Task PWM Calculator");
+      // printMotorInfo();
+      // Serial.println("Task PWM Calculator");
+    }
     vTaskDelay(40);
   }   
 }
@@ -466,7 +474,7 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
     float real_valueRPM = (real_valueRPS / 46.8512) * 60;
     speed_actual = real_valueRPM;
 
-    Serial.println("Task Speed Read");
+    // Serial.println("Task Speed Read");
     printMotorInfo();
     vTaskDelay(20);       
   }
