@@ -108,10 +108,10 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 /*-----------------------------CHAR LIBS-------------------------------*/
 /*---------------------------------------------------------------------*/
 // create arrow char
-uint8_t arrow[8] = {0x03, 0x07, 0x0F, 0x1F, 0x0F, 0x07, 0x03, 0x00};
+byte arrow[8] = {0x03, 0x07, 0x0F, 0x1F, 0x0F, 0x07, 0x03, 0x00};
 
 // create char for loading bar
-uint8_t loadingBar[5][8] = {
+byte loadingBar[5][8] = {
   {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10},
   {0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18},
   {0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C},
@@ -550,8 +550,6 @@ void taskTimer(void* v) {
     if (counterTick < durasi) {
       counterTick++;
       Serial.println(counterTick);
-      lcd.setCursor(0,0);
-      lcd.print(counterTick);
     } else {
       stateCondition = 10;
     }
