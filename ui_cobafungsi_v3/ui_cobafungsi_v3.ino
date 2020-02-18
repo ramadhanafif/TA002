@@ -445,7 +445,7 @@ void taskDisplay( void * parameter)
         //   lcd.write(byte(5));          
         // }
         
-        switch (piace) {
+        switch (piece) {
           case 0: {
             lcd.write(byte(1));
           }break;
