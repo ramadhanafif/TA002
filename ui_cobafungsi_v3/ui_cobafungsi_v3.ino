@@ -199,20 +199,20 @@ void setup() {
     3,                    /* Priority of the task. */
     &TaskHandle_Input);   /* Task handle. */
   
-  // xTaskCreate(
-  //   taskTimer,          /* Task function. */
-  //   "TaskTimer",        /* String with name of task. */
-  //   10000,              /* Stack size in bytes. */
-  //   NULL,               /* Parameter passed as input of the task */
-  //   3,                  /* Priority of the task. */
-  //   &TaskHandle_Timer); /* Task handle. */
+  xTaskCreate(
+    taskTimer,            /* Task function. */
+    "TaskTimer",          /* String with name of task. */
+    10000,                /* Stack size in bytes. */
+    NULL,                 /* Parameter passed as input of the task */
+    3,                    /* Priority of the task. */
+    &TaskHandle_Timer);   /* Task handle. */
 
   xTaskCreate(
     taksPause,            /* Task function. */
     "TaskPause",          /* String with name of task. */
     10000,                /* Stack size in bytes. */
     NULL,                 /* Parameter passed as input of the task */
-    3,                    /* Priority of the task. */
+    2,                    /* Priority of the task. */
     &TaskHandle_Pause);   /* Task handle. */
 
   //  xTaskCreate(
@@ -342,6 +342,7 @@ void taskDisplay( void * parameter)
     switch (stateCondition) {
       case -1:
         vTaskResume(TaskHandle_Input);
+        vTaskSuspend(TaskHandle_Timer);
         speed_req = 0;
         lcd.clear();
         stateCondition++;
@@ -353,7 +354,7 @@ void taskDisplay( void * parameter)
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
       case 1:
-        kecepatan = (encoderValue / 4) % 71;
+        kecepatan = (encoderValue / 4) % 71 + 10;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
       case 2:
@@ -386,7 +387,7 @@ void taskDisplay( void * parameter)
           lcd.setCursor(9, 2);
           lcd.print(" ");
           startProcess = 1;
-          Serial.println(startProcess);
+          // Serial.println(startProcess);
         }
         else {
           lcd.setCursor(9, 1);
@@ -394,11 +395,10 @@ void taskDisplay( void * parameter)
           lcd.setCursor(9, 2);
           lcd.write(byte(0));
           startProcess = 0;
-          Serial.println(startProcess);
+          // Serial.println(startProcess);
         }
         break;
       case 6:
-        //Serial.println(startProcess);
         if (startProcess) {
           stateCondition = 7;
           lcd.clear();
@@ -408,29 +408,9 @@ void taskDisplay( void * parameter)
           stateCondition = -1;
         }
         break;
-      case 8:   // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
-        lcd.clear();
-        Serial.print(temperatur);
-        Serial.print(" ");
-        Serial.print(kecepatan);
-        Serial.print(" ");
-        Serial.print(jam);
-        Serial.print(" ");
-        Serial.println(menit);
-        speed_req = kecepatan;
-        durasi = jam * 3600 + menit * 60;
-        vTaskResume(TaskHandle_Pause);
-        vTaskSuspend(TaskHandle_Input);
-        Serial.println(durasi);
-        break;
-      case 9:
-        speed_req = 0;
-        break;
-      case 10:
-        speed_req = 0; 
       case 7:
         // local variable
-        unsigned int piace;
+        unsigned int piece;
         double percent;
 
         lcd.setCursor(0,0);
@@ -438,7 +418,7 @@ void taskDisplay( void * parameter)
 
         // calculation from sensor read
         vTaskDelay(10);
-        value += 1;
+        value += 4;
         value = constrain(value, 0, 99);
 
         if (value == 99) {
@@ -450,27 +430,64 @@ void taskDisplay( void * parameter)
         double position = (columnLength / 100 * percent);
 
         lcd.setCursor(position,2);
-        piace = (int)(position * 5) % 5;
+        piece = (int)(position * 5) % 5;
     
         // drawing charater's colums
-        switch (piace) {
-          case 0:
-            lcd.write(byte(1));
-            break;
-          case 1:
-            lcd.write(byte(2));
-            break;
-          case 2:
-            lcd.write(byte(3));
-            break;
-          case 3:
-            lcd.write(byte(4));
-            break;
-          case 4:
-            lcd.write(byte(5));
-            break;
+        if (piece == 0) {
+          lcd.write(byte(1));
+        } else if (piece == 1) {
+          lcd.write(byte(2));
+        } else if (piece == 2) {
+          lcd.write(byte(3));
+        } else if (piece == 3) {
+          lcd.write(byte(4));
+        } else {
+          lcd.write(byte(5));          
         }
-        break;     
+        
+        // switch (piace) {
+        //   case 0:
+        //     lcd.write(byte(1));
+        //     break;
+        //   case 1:
+        //     lcd.write(byte(2));
+        //     break;
+        //   case 2:
+        //     lcd.write(byte(3));
+        //     break;
+        //   case 3:
+        //     lcd.write(byte(4));
+        //     break;
+        //   case 4:
+        //     lcd.write(byte(5));
+        //     break;
+        // }
+        break;
+      case 8:   // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
+        lcd.clear();
+        // Serial.print(temperatur);
+        // Serial.print(" ");
+        // Serial.print(kecepatan);
+        // Serial.print(" ");
+        // Serial.print(jam);
+        // Serial.print(" ");
+        // Serial.println(menit);
+        durasi = jam * 3600 + menit * 60;
+        speed_req = kecepatan;
+        vTaskResume(TaskHandle_Timer);
+        vTaskResume(TaskHandle_Pause);
+        vTaskSuspend(TaskHandle_Input);
+        break;
+      case 9:   // pause
+        speed_req = 0;
+        vTaskSuspend(TaskHandle_Timer);
+        Serial.println("Timer Pause");
+        break;
+      case 10:  // timer done
+        speed_req = 0;
+        vTaskSuspend(TaskHandle_Timer);
+        Serial.println("Timer Done");        
+        break;      
     }
     // Serial.println("Task Display");
     vTaskDelay(100);
@@ -514,14 +531,14 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   pinMode(encoderMotor, INPUT_PULLUP);
   attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);
 
-  TickType_t xLastWakeTime;
+  TickType_t xLastWakeTimeSpeedRead;
   const TickType_t xFrequency = 20;   // program will run every 20ms
 
   // Initialise the xLastWakeTime variable with the current time.
-  xLastWakeTime = xTaskGetTickCount();
+  xLastWakeTimeSpeedRead = xTaskGetTickCount();
 
   for (;;) {  // A Task shall never return or exit.
-    vTaskDelayUntil( &xLastWakeTime, xFrequency );       
+    vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );       
 
     // motor use gear ratio 1 : 46.8512
     // speed from high speed gear
@@ -548,17 +565,20 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 
 void taskTimer(void* v) {
   unsigned int counterTick = 0;
-  TickType_t xLastWakeTime = xTaskGetTickCount();
+  TickType_t xLastWakeTimeTimer = xTaskGetTickCount();
   for (;;) {
     //Recursive part
-    Serial.println(durasi);
-    if (counterTick <= durasi) {
+    Serial.println("Task Timer");
+    if (counterTick == durasi) {
+      vTaskSuspend(NULL);
+    }
+    if (counterTick < durasi) {
       counterTick++;
       Serial.println(counterTick);
     } else {
       stateCondition = 10;
     }
-    vTaskDelayUntil( &xLastWakeTime, 1000);
+    vTaskDelayUntil( &xLastWakeTimeTimer, 1000);
   }
 }
 
