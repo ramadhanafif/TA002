@@ -26,6 +26,13 @@
 
 
 /*---------------------------------------------------------------------*/
+/*---------------------------TASK HANDLES------------------------------*/
+/*---------------------------------------------------------------------*/
+TaskHandle_t TaskHandle_Timer;
+TaskHandle_t TaskHandle_Pause;
+TaskHandle_t TaskHandle_Input;
+
+/*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
 /*---------------------------------------------------------------------*/
 // universal needs
@@ -34,6 +41,7 @@ int temperatur = temConstant;
 int kecepatan = kecConstant;
 int jam = jamConstant;
 int menit = menConstant;
+unsigned int durasi = jam * 3600 + menit * 60;
 
 boolean currentButtonStateGreen;
 boolean lastButtonStateGreen = LOW;
@@ -167,36 +175,44 @@ void setup() {
   Serial.begin (112500);
 
   xTaskCreate(
-    TaskSpeedRead_rpm,  /* Task function. */
-    "SpeedRead_rpm",    /* String with name of task. */
-    10000,              /* Stack size in bytes. */
-    NULL,               /* Parameter passed as input of the task */
-    3,                  /* Priority of the task. */
-    NULL );             /* Task handle. */
+    taskSpeedRead_rpm,    /* Task function. */
+    "SpeedRead_rpm",      /* String with name of task. */
+    10000,                /* Stack size in bytes. */
+    NULL,                 /* Parameter passed as input of the task */
+    3,                    /* Priority of the task. */
+    NULL );               /* Task handle. */
 
   xTaskCreate(
-    TaskPWMCalculator,  /* Task function. */
-    "PWMCalculator",    /* String with name of task. */
-    10000,              /* Stack size in bytes. */
-    NULL,               /* Parameter passed as input of the task */
-    2,                  /* Priority of the task. */
-    NULL);              /* Task handle. */
+    taskPWMCalculator,    /* Task function. */
+    "PWMCalculator",      /* String with name of task. */
+    10000,                /* Stack size in bytes. */
+    NULL,                 /* Parameter passed as input of the task */
+    2,                    /* Priority of the task. */
+    NULL);                /* Task handle. */
 
   xTaskCreate(
-    taskInput,          /* Task function. */
-    "TaskOne",          /* String with name of task. */
-    10000,              /* Stack size in bytes. */
-    NULL,               /* Parameter passed as input of the task */
-    3,                  /* Priority of the task. */
-    NULL);              /* Task handle. */
+    taskInput,            /* Task function. */
+    "TaskInput",          /* String with name of task. */
+    10000,                /* Stack size in bytes. */
+    NULL,                 /* Parameter passed as input of the task */
+    3,                    /* Priority of the task. */
+    &TaskHandle_Input);   /* Task handle. */
   
+  // xTaskCreate(
+  //   taskTimer,          /* Task function. */
+  //   "TaskTimer",        /* String with name of task. */
+  //   10000,              /* Stack size in bytes. */
+  //   NULL,               /* Parameter passed as input of the task */
+  //   3,                  /* Priority of the task. */
+  //   &TaskHandle_Timer); /* Task handle. */
+
   xTaskCreate(
-    TaskTimer,          /* Task function. */
-    "TaskTimer",          /* String with name of task. */
-    10000,              /* Stack size in bytes. */
-    NULL,               /* Parameter passed as input of the task */
-    3,                  /* Priority of the task. */
-    NULL);              /* Task handle. */
+    taksPause,            /* Task function. */
+    "TaskPause",          /* String with name of task. */
+    10000,                /* Stack size in bytes. */
+    NULL,                 /* Parameter passed as input of the task */
+    3,                    /* Priority of the task. */
+    &TaskHandle_Pause);   /* Task handle. */
 
   //  xTaskCreate(
   //    taskDisplay,      /* Task function. */
@@ -226,7 +242,6 @@ void taskInput( void * parameter )
   pinMode(encoderPin1, INPUT_PULLUP);
   pinMode(encoderPin2, INPUT_PULLUP);
   pinMode(switchPinGreen, INPUT_PULLUP);
-  pinMode(switchPinYellow, INPUT_PULLUP);
   pinMode(switchPinWhite, INPUT_PULLUP);
   pinMode(switchPinBlack, INPUT_PULLUP);
 
@@ -279,6 +294,25 @@ void taskInput( void * parameter )
   }
 }
 
+void taksPause( void * paramaeter)
+{
+  pinMode(switchPinYellow, INPUT_PULLUP);
+
+  for ( ; ; ) {
+    // push button action
+    currentButtonStateYellow = digitalRead(switchPinYellow);
+    vTaskDelay(10);
+    if (currentButtonStateYellow == HIGH && lastButtonStateYellow == LOW) {
+      //button is not being pushed
+      //do nothing
+    } else if (currentButtonStateYellow == LOW && lastButtonStateYellow == HIGH) {
+      //button is being pushed
+      stateCondition = 9;
+    }
+    lastButtonStateYellow = currentButtonStateYellow;
+  }
+}
+
 void taskDisplay( void * parameter)
 {
   // call updateEncoder() when any high/low changed seen
@@ -305,6 +339,7 @@ void taskDisplay( void * parameter)
         stateCondition++;
         break;
       case 0:
+        vTaskSuspend(TaskHandle_Pause);
         temperatur = ((encoderValue / 4) % 66) + 25;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         break;
@@ -374,7 +409,15 @@ void taskDisplay( void * parameter)
         Serial.print(" ");
         Serial.println(menit);
         speed_req = kecepatan;
-        break; 
+        durasi = jam * 3600 + menit * 60;
+        vTaskResume(TaskHandle_Pause);
+        Serial.println(durasi);
+        break;
+      case 9:
+        speed_req = 0;
+        break;
+      case 10:
+        speed_req = 0; 
       case 7:
         // local variable
         unsigned int piace;
@@ -424,7 +467,7 @@ void taskDisplay( void * parameter)
   }
 }
 
-void TaskPWMCalculator(void *pvParameters)  // This is a task.
+void taskPWMCalculator(void *pvParameters)  // This is a task.
 {
   (void) pvParameters;
 
@@ -456,7 +499,7 @@ void TaskPWMCalculator(void *pvParameters)  // This is a task.
   }   
 }
 
-void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
+void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 {
   pinMode(encoderMotor, INPUT_PULLUP);
   attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);
@@ -493,18 +536,17 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
   }
 }
 
-void TaskTimer(void* v) {
-  unsigned int counter = 0;
-  unsigned int durasi = jam * 3600 + menit * 60;
+void taskTimer(void* v) {
+  unsigned int counterTick = 0;
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     //Recursive part
     Serial.println(durasi);
-    if (counter <= durasi) {
-      counter++;
+    if (counterTick <= durasi) {
+      counterTick++;
+      Serial.println(counterTick);
     } else {
-
-      speed_req = 0;
+      stateCondition = 10;
     }
     vTaskDelayUntil( &xLastWakeTime, 1000);
   }
