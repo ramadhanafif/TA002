@@ -204,7 +204,7 @@ void setup() {
     "TaskTimer",          /* String with name of task. */
     10000,                /* Stack size in bytes. */
     NULL,                 /* Parameter passed as input of the task */
-    3,                    /* Priority of the task. */
+    4,                    /* Priority of the task. */
     &TaskHandle_Timer);   /* Task handle. */
 
   xTaskCreate(
@@ -464,7 +464,7 @@ void taskDisplay( void * parameter)
         }
       }break;
       case 8: {  // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
-        lcd.clear();
+        
         // Serial.print(temperatur);
         // Serial.print(" ");
         // Serial.print(kecepatan);
@@ -566,6 +566,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 void taskTimer(void* v) {
   unsigned int counterTick = 0;
   TickType_t xLastWakeTimeTimer = xTaskGetTickCount();
+  lcd.clear();
   for (;;) {
     //Recursive part
     Serial.println("Task Timer");
@@ -575,6 +576,8 @@ void taskTimer(void* v) {
     if (counterTick < durasi) {
       counterTick++;
       Serial.println(counterTick);
+      lcd.setCursor(0,0);
+      lcd.print(counterTick);
     } else {
       stateCondition = 10;
     }
