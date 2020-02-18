@@ -11,14 +11,14 @@ DallasTemperature sensor2(&oneWire2);
 #define BA -0.7
 #define BB 1
 
-#define TIME_ON 30
-#define SET_POINT 75
+#define TIME_ON 40
+#define SET_POINT 90
 
 #define PERIOD 400
 
 TaskHandle_t xPWMHandle = NULL;
 unsigned int state = 0;
-unsigned int ssr = 0;
+unsigned int ssr = 2;
 double input = 0;
 unsigned int counter = 0;
 double dutyCycle = 0;
@@ -35,7 +35,8 @@ void TaskPrint(void* v) {
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
     Serial.print(input); Serial.print(" ");
-   // Serial.print(ssr); Serial.print(" ");
+    Serial.print(state); Serial.print(" ");
+    Serial.print(ssr); Serial.print(" ");
     Serial.println();
   }
 }
@@ -43,7 +44,6 @@ void TaskPrint(void* v) {
 void TaskCompute(void* v) {
   double setPoint = SET_POINT;                          //set point at zero degrees
   unsigned int prev_input;
-  unsigned int state = 0;
   unsigned int time_on = 0;
 
   double prevtime = millis();
@@ -59,7 +59,7 @@ void TaskCompute(void* v) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
     input = get_temp(sensor2);
     switch (state) {
-      case 0:
+      case 0: //PID
         {
           double output = computePID(input, setPoint, &prevtime, &cumerror);
 
@@ -78,21 +78,21 @@ void TaskCompute(void* v) {
           }
           break;
         }
-      case 1:
+      case 1: //On Off
         {
-          vTaskDelete(xPWMHandle); //delete PWM.
+          vTaskSuspend(xPWMHandle); //delete PWM.
           switch (ssr)
           {
-            case 0:
+            case 0: //nunggu sampe turun dari kelebihan suhu
               digitalWrite(SW, ssr);
               if (input <= setPoint - BB) {
                 if (abs(prev_input - input) < 2) {
                   ssr = 1; //change state
-                  counter = 30;
+                  counter = TIME_ON;
                 }
               }
               break;
-            case 1:
+            case 1: //on TIME_ON s
               digitalWrite(SW, ssr);
               counter--;
               if (counter == 0)
@@ -100,7 +100,7 @@ void TaskCompute(void* v) {
                 ssr = 2;
               }
               break;
-            case 2:
+            case 2: //nunggu TIME_ON s
               digitalWrite(SW, 0);
               counter++;
               if (counter == TIME_ON)
