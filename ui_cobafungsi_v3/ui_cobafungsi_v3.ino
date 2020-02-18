@@ -36,7 +36,7 @@ TaskHandle_t TaskHandle_Input;
 /*-----------------------------VARIABLES-------------------------------*/
 /*---------------------------------------------------------------------*/
 // universal needs
-int stateCondition = 0;
+int stateCondition = -1;
 int temperatur = temConstant;
 int kecepatan = kecConstant;
 int jam = jamConstant;
@@ -87,6 +87,7 @@ volatile double encoderMotorValue = 0;
 // flag for LCD state needs
 boolean forward = 1;
 boolean startProcess = 1;
+boolean pauseState = 0;
 
 
 /*---------------------------------------------------------------------*/
@@ -307,7 +308,13 @@ void taksPause( void * paramaeter)
       //do nothing
     } else if (currentButtonStateYellow == LOW && lastButtonStateYellow == HIGH) {
       //button is being pushed
-      stateCondition = 9;
+      if (pauseState == 0) {
+        stateCondition = 9;
+        pauseState = 1;
+      } else {
+        stateCondition--;
+        pauseState = 0;
+      } 
     }
     lastButtonStateYellow = currentButtonStateYellow;
   }
@@ -334,11 +341,13 @@ void taskDisplay( void * parameter)
   for (;;) {
     switch (stateCondition) {
       case -1:
+        vTaskResume(TaskHandle_Input);
         speed_req = 0;
         lcd.clear();
         stateCondition++;
         break;
       case 0:
+        vTaskResume(TaskHandle_Input);
         vTaskSuspend(TaskHandle_Pause);
         temperatur = ((encoderValue / 4) % 66) + 25;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
@@ -411,6 +420,7 @@ void taskDisplay( void * parameter)
         speed_req = kecepatan;
         durasi = jam * 3600 + menit * 60;
         vTaskResume(TaskHandle_Pause);
+        vTaskSuspend(TaskHandle_Input);
         Serial.println(durasi);
         break;
       case 9:
