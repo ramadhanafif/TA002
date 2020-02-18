@@ -340,32 +340,32 @@ void taskDisplay( void * parameter)
 
   for (;;) {
     switch (stateCondition) {
-      case -1:
+      case -1: {
         vTaskResume(TaskHandle_Input);
         vTaskSuspend(TaskHandle_Timer);
         speed_req = 0;
         lcd.clear();
         stateCondition++;
-        break;
-      case 0:
+      }break;
+      case 0: {
         vTaskResume(TaskHandle_Input);
         vTaskSuspend(TaskHandle_Pause);
         temperatur = ((encoderValue / 4) % 66) + 25;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-        break;
-      case 1:
+      }break;
+      case 1: {
         kecepatan = (encoderValue / 4) % 71 + 10;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-        break;
-      case 2:
+      }break;
+      case 2: {
         jam = (encoderValue / 4) % 25;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-        break;
-      case 3:
+      }break;
+      case 3: {
         menit = (encoderValue / 4) % 60;
         printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-        break;
-      case 4:
+      }break;
+      case 4: {
         if (forward) {
           lcd.clear();
           stateCondition ++;
@@ -373,8 +373,8 @@ void taskDisplay( void * parameter)
           lcd.clear();
           stateCondition --;
         }
-        break;
-      case 5:
+      }break;
+      case 5: {
         lcd.setCursor(0, 0);
         lcd.print("Lanjutkan Pengadukan");
         lcd.setCursor(3, 1);
@@ -397,8 +397,8 @@ void taskDisplay( void * parameter)
           startProcess = 0;
           // Serial.println(startProcess);
         }
-        break;
-      case 6:
+      }break;
+      case 6: {
         if (startProcess) {
           stateCondition = 7;
           lcd.clear();
@@ -407,8 +407,8 @@ void taskDisplay( void * parameter)
           forward = 1;
           stateCondition = -1;
         }
-        break;
-      case 7:
+      }break;
+      case 7: {
         // local variable
         unsigned int piece;
         double percent;
@@ -433,37 +433,37 @@ void taskDisplay( void * parameter)
         piece = (int)(position * 5) % 5;
     
         // drawing charater's colums
-        if (piece == 0) {
-          lcd.write(byte(1));
-        } else if (piece == 1) {
-          lcd.write(byte(2));
-        } else if (piece == 2) {
-          lcd.write(byte(3));
-        } else if (piece == 3) {
-          lcd.write(byte(4));
-        } else {
-          lcd.write(byte(5));          
-        }
-        
-        // switch (piace) {
-        //   case 0:
-        //     lcd.write(byte(1));
-        //     break;
-        //   case 1:
-        //     lcd.write(byte(2));
-        //     break;
-        //   case 2:
-        //     lcd.write(byte(3));
-        //     break;
-        //   case 3:
-        //     lcd.write(byte(4));
-        //     break;
-        //   case 4:
-        //     lcd.write(byte(5));
-        //     break;
+        // if (piece == 0) {
+        //   lcd.write(byte(1));
+        // } else if (piece == 1) {
+        //   lcd.write(byte(2));
+        // } else if (piece == 2) {
+        //   lcd.write(byte(3));
+        // } else if (piece == 3) {
+        //   lcd.write(byte(4));
+        // } else {
+        //   lcd.write(byte(5));          
         // }
-        break;
-      case 8:   // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
+        
+        switch (piace) {
+          case 0: {
+            lcd.write(byte(1));
+          }break;
+          case 1: {
+            lcd.write(byte(2));
+          }break;
+          case 2: {
+            lcd.write(byte(3));
+          }break;
+          case 3: {
+            lcd.write(byte(4));
+          }break;
+          case 4: {
+            lcd.write(byte(5));
+          }break;
+        }
+      }break;
+      case 8: {  // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
         lcd.clear();
         // Serial.print(temperatur);
         // Serial.print(" ");
@@ -477,17 +477,17 @@ void taskDisplay( void * parameter)
         vTaskResume(TaskHandle_Timer);
         vTaskResume(TaskHandle_Pause);
         vTaskSuspend(TaskHandle_Input);
-        break;
-      case 9:   // pause
+      }break;
+      case 9: {  // pause
         speed_req = 0;
         vTaskSuspend(TaskHandle_Timer);
         Serial.println("Timer Pause");
-        break;
-      case 10:  // timer done
+      }break;
+      case 10: { // timer done
         speed_req = 0;
         vTaskSuspend(TaskHandle_Timer);
         Serial.println("Timer Done");        
-        break;      
+      }break;      
     }
     // Serial.println("Task Display");
     vTaskDelay(100);
