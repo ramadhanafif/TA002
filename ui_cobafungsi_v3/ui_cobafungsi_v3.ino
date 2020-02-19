@@ -26,9 +26,15 @@
 
 
 /*---------------------------------------------------------------------*/
+/*------------------------------TIMER----------------------------------*/
+/*---------------------------------------------------------------------*/
+hw_timer_t * timer = NULL;
+
+
+/*---------------------------------------------------------------------*/
 /*---------------------------TASK HANDLES------------------------------*/
 /*---------------------------------------------------------------------*/
-TaskHandle_t TaskHandle_Timer;
+// TaskHandle_t TaskHandle_Timer;
 TaskHandle_t TaskHandle_Pause;
 TaskHandle_t TaskHandle_Input;
 TaskHandle_t TaskHandle_SpeadRead;
@@ -58,6 +64,9 @@ volatile unsigned long encoderValue = constantEncoderVal;
 long lastencoderValue = 0; // store the value of rotary encoder
 int lastMSB = 0;
 int lastLSB = 0;
+
+// timer
+volatile int timerCounter;
 
 // setting PWM properties
 const int freq = 256000;
@@ -119,17 +128,19 @@ byte loadingBar[5][8] = {
   {0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F}
   };
 
-// byte p2[8] = {
-//   };
 
-// byte p3[8] = {
-//   };
-
-// byte p4[8] = {
-//   };
-
-// byte p5[8] = {
-//   };
+/*---------------------------------------------------------------------*/
+/*---------------------------------------------------------------------*/
+/*---------------------------------------------------------------------*/
+void IRAM_ATTR onTimer() {
+  if ((stateCondition == 8) && (durasi != timerCounter)) {
+    timerCounter++;
+    Serial.println(timerCounter);
+  } else if ((stateCondition == 8) && (durasi == timerCounter)) {
+    // Serial.println("Timer Done");
+    stateCondition = 10;
+  }
+}
 
 
 /*---------------------------------------------------------------------*/
@@ -137,6 +148,12 @@ byte loadingBar[5][8] = {
 /*---------------------------------------------------------------------*/
 void setup() {
   Serial.begin (112500);
+
+  // timer
+  timer = timerBegin(0, 80, true);
+  timerAttachInterrupt(timer, &onTimer, true);
+  timerAlarmWrite(timer, 1000000, true);
+  timerAlarmEnable(timer);
 
   xTaskCreate(
     taskSpeedRead_rpm,        /* Task function. */
@@ -162,13 +179,13 @@ void setup() {
     3,                        /* Priority of the task. */
     &TaskHandle_Input);       /* Task handle. */
   
-  xTaskCreate(
-    taskTimer,                /* Task function. */
-    "TaskTimer",              /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
-    NULL,                     /* Parameter passed as input of the task */
-    4,                        /* Priority of the task. */
-    &TaskHandle_Timer);       /* Task handle. */
+  // xTaskCreate(
+  //   taskTimer,                /* Task function. */
+  //   "TaskTimer",              /* String with name of task. */
+  //   10000,                    /* Stack size in bytes. */
+  //   NULL,                     /* Parameter passed as input of the task */
+  //   4,                        /* Priority of the task. */
+  //   &TaskHandle_Timer);       /* Task handle. */
 
   xTaskCreate(
     taksPause,                /* Task function. */
@@ -186,7 +203,7 @@ void setup() {
   //    10,               /* Priority of the task. */
   //    NULL);            /* Task handle. */
   taskDisplay(NULL);
-  vTaskSuspend(TaskHandle_Timer);
+  // vTaskSuspend(TaskHandle_Timer);
   vTaskSuspend(TaskHandle_SpeadRead);
   vTaskSuspend(TaskHandle_Input);
   vTaskSuspend(TaskHandle_Pause);
@@ -258,7 +275,7 @@ void taskInput( void * parameter )
     }
     lastButtonStateWhite = currentButtonStateWhite;
 
-    Serial.println("Task Input");
+    // Serial.println("Task Input");
   }
 }
 
@@ -285,7 +302,7 @@ void taksPause( void * paramaeter)
     }
     lastButtonStateYellow = currentButtonStateYellow;
 
-    Serial.println("Task Pause");
+    // Serial.println("Task Pause");
   }
 }
 
@@ -311,7 +328,7 @@ void taskDisplay( void * parameter)
     switch (stateCondition) {
       case -1: {
         vTaskResume(TaskHandle_Input);
-        vTaskSuspend(TaskHandle_Timer);
+        // vTaskSuspend(TaskHandle_Timer);
         vTaskSuspend(TaskHandle_Pause);
         vTaskSuspend(TaskHandle_SpeadRead);
         speed_req = 0;
@@ -435,7 +452,6 @@ void taskDisplay( void * parameter)
         }
       }break;
       case 8: {  // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
-        
         // Serial.print(temperatur);
         // Serial.print(" ");
         // Serial.print(kecepatan);
@@ -443,28 +459,29 @@ void taskDisplay( void * parameter)
         // Serial.print(jam);
         // Serial.print(" ");
         // Serial.println(menit);
+        lcd.clear();
         vTaskResume(TaskHandle_SpeadRead);
         durasi = jam * 3600 + menit * 60;
         speed_req = kecepatan;        
-        vTaskResume(TaskHandle_Timer);
+        // vTaskResume(TaskHandle_Timer);
         vTaskResume(TaskHandle_Pause);
         vTaskSuspend(TaskHandle_Input);
       }break;
       case 9: {  // pause
         speed_req = 0;
-        vTaskSuspend(TaskHandle_Timer);
+        // vTaskSuspend(TaskHandle_Timer);
         vTaskSuspend(TaskHandle_SpeadRead);
         Serial.println("Timer Pause");
       }break;
       case 10: { // timer done
         speed_req = 0;
-        vTaskSuspend(TaskHandle_Timer);
+        // vTaskSuspend(TaskHandle_Timer);
         vTaskSuspend(TaskHandle_SpeadRead);
         vTaskSuspend(TaskHandle_Pause);
         Serial.println("Timer Done");        
       }break;      
     }
-    Serial.println("Task Display");
+    // Serial.println("Task Display");
     vTaskDelay(100);
   }
 }
@@ -495,7 +512,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       ledcWrite(pwmChannel, PWM_val);
 
       // printMotorInfo();
-      Serial.println("Task PWM Calculator");
+      // Serial.println("Task PWM Calculator");
     }
     vTaskDelay(40);
   }   
@@ -533,30 +550,29 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     float real_valueRPM = (real_valueRPS / 46.8512) * 60;
     speed_actual = real_valueRPM;
 
-    Serial.println("Task Speed Read");
+    // Serial.println("Task Speed Read");
     //  printMotorInfo();
   }
 }
 
-void taskTimer(void* v) {
-  unsigned int counterTick = 0;
-  TickType_t xLastWakeTimeTimer = xTaskGetTickCount();
-  for (;;) {
-    vTaskDelayUntil( &xLastWakeTimeTimer, 1000);
-    //Recursive part
-    if (counterTick == durasi) {
-      vTaskSuspend(NULL);
-    }
-    if (counterTick < durasi) {
-      counterTick++;
-      Serial.println(counterTick);
-    } else {
-      stateCondition = 10;
-    }
+// void taskTimer(void* v) {
+//   unsigned int counterTick = 0;
+//   TickType_t xLastWakeTimeTimer = xTaskGetTickCount();
+//   for (;;) {
+//     vTaskDelayUntil( &xLastWakeTimeTimer, 1000);
+//     //Recursive part
+//     if (counterTick == durasi) {
+//       vTaskSuspend(NULL);
+//     }
+//     if (counterTick < durasi) {
+//       counterTick++;
+//     } else {
+//       stateCondition = 10;
+//     }
 
-    Serial.println("Task Timer");
-  }
-}
+//     // Serial.println("Task Timer");
+//   }
+// }
 
 
 /*---------------------------------------------------------------------*/
