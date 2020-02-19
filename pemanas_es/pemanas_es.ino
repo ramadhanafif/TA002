@@ -64,7 +64,7 @@ void TaskCompute(void* v) {
         ssr = 1;
       }
     }
-
+     /*---------------------end of state 1------------------*/
     Serial.print(input);
     Serial.print(';');
     Serial.print(state);
@@ -74,6 +74,8 @@ void TaskCompute(void* v) {
     digitalWrite(SW, ssr);
     vTaskDelay(800);
   }
+
+
 }
 
 void TaskPWM(void* pv) {
