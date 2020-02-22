@@ -7,14 +7,13 @@ DallasTemperature sensor2(&oneWire2);
 
 //Pin Definition
 #define SW 2
-//#define TEMP_SENSOR 15
 #define BA -0.7
 #define BB 1
 
-#define TIME_ON 40
-#define SET_POINT 90
+#define TIME_ON_PMNS 40
+#define SET_POINT_DEBUG 90
 
-#define PERIOD 400
+#define PERIOD_PWM 400
 
 TaskHandle_t xPWMHandle = NULL;
 unsigned int state = 0;
@@ -41,7 +40,7 @@ void TaskPrint(void* v) {
   }
 }
 
-void TaskCompute(void* v) {
+void TaskPMNS(void* v) {
   double setPoint = SET_POINT;                          //set point at zero degrees
   unsigned int prev_input;
   unsigned int time_on = 0;
@@ -117,7 +116,7 @@ void TaskCompute(void* v) {
   }
 }
 
-void TaskPWM(void* v) {
+void TaskPWMPMNS(void* v) {
   pinMode(SW, OUTPUT);
   for (;;) {
     digitalWrite(SW, HIGH);
@@ -129,26 +128,32 @@ void TaskPWM(void* v) {
 
 void setup() {
 
-  xTaskCreate(TaskCompute,
-              "Task2",
-              1024,
-              NULL,
-              tskIDLE_PRIORITY + 2,
-              NULL);
+  xTaskCreate(
+    TaskPMNS,
+    "Task2",
+    1024,
+    NULL,
+    tskIDLE_PRIORITY + 2,
+    NULL
+  );
 
-  xTaskCreate(TaskPrint,
-              "Task2",
-              1024,
-              NULL,
-              tskIDLE_PRIORITY + 3,
-              NULL);
+  xTaskCreate(
+    TaskPrint,
+    "Task2",
+    1024,
+    NULL,
+    tskIDLE_PRIORITY + 3,
+    NULL
+  );
 
-  xTaskCreate(TaskPWM,
-              "Task2",
-              1024,
-              NULL,
-              tskIDLE_PRIORITY + 1,
-              &xPWMHandle);
+  xTaskCreate(
+    TaskPWMPMNS,
+    "Task2",
+    1024,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    &xPWMHandle
+  );
 }
 
 void loop() {

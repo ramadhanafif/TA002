@@ -1,15 +1,17 @@
 /*---------------------------------------------------------------------*/
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
-#include "Wire.h"
+#include "Wire.h"                 // I2C untuk LCD
 #include "LiquidCrystal_I2C.h"    // include library LCD I2C
 #include "SimpleKalmanFilter.h"   // include library Kalman Filter
 
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 /*---------------------------------------------------------------------*/
-/*--------------------------CONSTANS & PINS----------------------------*/
+/*--------------------------CONSTANTS & PINS----------------------------*/
 /*---------------------------------------------------------------------*/
-#define columnLength 20.0
+#define columnLength 20
 #define temConstant 25
 #define kecConstant 0
 #define jamConstant 0
@@ -21,8 +23,22 @@
 #define switchPinYellow 17
 #define switchPinWhite 16
 #define switchPinBlack 4
-#define pwm 2 
+#define pwm 2
 #define encoderMotor 15
+
+/*MAIN State Definitions*/
+#define STATE_INIT -1
+#define STATE_INPUT_TEMP 0
+#define STATE_INPUT_RPM 1
+#define STATE_INPUT_JAM 2
+#define STATE_INPUT_MENIT 3
+#define STATE_WAIT_NEXT 4
+#define STATE_CONFIRM 5
+#define STATE_START_PROCESS 6
+#define STATE_PANAS_AWAL 7
+#define STATE_START_ROT 8
+#define STATE_PAUSE 9
+#define STATE_DONE 10
 
 
 /*---------------------------------------------------------------------*/
@@ -34,7 +50,6 @@ hw_timer_t * timer = NULL;
 /*---------------------------------------------------------------------*/
 /*---------------------------TASK HANDLER------------------------------*/
 /*---------------------------------------------------------------------*/
-// TaskHandle_t TaskHandle_Timer;
 TaskHandle_t TaskHandle_Pause;
 TaskHandle_t TaskHandle_Input;
 TaskHandle_t TaskHandle_SpeadRead;
@@ -43,12 +58,12 @@ TaskHandle_t TaskHandle_SpeadRead;
 /*-----------------------------VARIABLES-------------------------------*/
 /*---------------------------------------------------------------------*/
 // universal needs
-int stateCondition = -1;
+int stateCondition = STATE_INIT;
 int temperatur = temConstant;
 int kecepatan = kecConstant;
 int jam = jamConstant;
 int menit = menConstant;
-unsigned int durasi = jam * 3600 + menit * 60;
+unsigned int durasi = 0;
 
 boolean currentButtonStateGreen;
 boolean lastButtonStateGreen = LOW;
@@ -76,9 +91,6 @@ const int resolution = 8;
 // PID controller
 int speed_req = 0;        // in rpm
 float speed_actual = 0;   // in rpm
-// double Kp = 12;
-// double Kd = 12;
-// double Ki = 0.7;
 double Kp = 0.5;
 double Kd = 0.01;
 double Ki = 0.03;
@@ -104,8 +116,8 @@ boolean pauseState = 0;
 /*------------------------------OBJECTS--------------------------------*/
 /*---------------------------------------------------------------------*/
 // SimpleKalmanFilter(e_mea, e_est, q);
-// e_mea: Measurement Uncertainty 
-// e_est: Estimation Uncertainty 
+// e_mea: Measurement Uncertainty
+// e_est: Estimation Uncertainty
 // q: Process Noise
 SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
@@ -126,19 +138,20 @@ byte loadingBar[5][8] = {
   {0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C},
   {0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E},
   {0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F}
-  };
+};
 
 
 /*---------------------------------------------------------------------*/
-/*---------------------------------------------------------------------*/
+/*----------------------------TIMER ISR--------------------------------*/
 /*---------------------------------------------------------------------*/
 void IRAM_ATTR onTimer() {
-  if ((stateCondition == 8) && (durasi != timerCounter)) {
+  if ((stateCondition == STATE_START_ROT) && (durasi != timerCounter)) {
     timerCounter++;
     Serial.println(timerCounter);
-  } else if ((stateCondition == 8) && (durasi == timerCounter)) {
+  } else if ((stateCondition == STATE_START_ROT) && (durasi == timerCounter)) {
     // Serial.println("Timer Done");
-    stateCondition = 10;
+    stateCondition = STATE_DONE;
+    timerCounter++;
   }
 }
 
@@ -150,10 +163,9 @@ void setup() {
   Serial.begin (112500);
 
   // timer
-  timer = timerBegin(0, 80, true);
+  timer = timerBegin(0, 80000, true);
   timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, 1000000, true);
-  timerAlarmEnable(timer);
+  timerAlarmWrite(timer, 1000, true);
 
   xTaskCreate(
     taskSpeedRead_rpm,        /* Task function. */
@@ -175,10 +187,18 @@ void setup() {
     taskInput,                /* Task function. */
     "TaskInput",              /* String with name of task. */
     10000,                    /* Stack size in bytes. */
-    NULL,                     /* Parameter passed as input of the task */
+    NULL,                     /* Prameter passed as input of the task */
     3,                        /* Priority of the task. */
     &TaskHandle_Input);       /* Task handle. */
-  
+
+  xTaskCreate(
+    taskInput,                /* Task function. */
+    "TaskInput",              /* String with name of task. */
+    10000,                    /* Stack size in bytes. */
+    NULL,                     /* Prameter passed as input of the task */
+    3,                        /* Priority of the task. */
+    &TaskHandle_Input);       /* Task handle. */
+
   // xTaskCreate(
   //   taskTimer,                /* Task function. */
   //   "TaskTimer",              /* String with name of task. */
@@ -265,7 +285,7 @@ void taskInput( void * parameter )
       //do nothing
     } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
       //button is being pushed
-      stateCondition = -1;
+      stateCondition = STATE_INIT;
       encoderValue = constantEncoderVal;
       temperatur = temConstant;
       kecepatan = kecConstant;
@@ -293,12 +313,12 @@ void taksPause( void * paramaeter)
     } else if (currentButtonStateYellow == LOW && lastButtonStateYellow == HIGH) {
       //button is being pushed
       if (pauseState == 0) {
-        stateCondition = 9;
+        stateCondition = STATE_PAUSE;
         pauseState = 1;
       } else {
         stateCondition--;
         pauseState = 0;
-      } 
+      }
     }
     lastButtonStateYellow = currentButtonStateYellow;
 
@@ -312,7 +332,7 @@ void taskDisplay( void * parameter)
   // on interrupt 0 (pin 2), or interrupt 1 (pin 3)
   attachInterrupt(encoderPin1, updateEncoder, CHANGE);
   attachInterrupt(encoderPin2, updateEncoder, CHANGE);
-  
+
   // initialize the LCD
   lcd.begin();
   lcd.createChar(0, arrow);
@@ -322,164 +342,168 @@ void taskDisplay( void * parameter)
   lcd.createChar(4, loadingBar[3]);
   lcd.createChar(5, loadingBar[4]);
 
-  unsigned int value = 0;
+  unsigned int value = 0; //ini value apa
 
   for (;;) {
     switch (stateCondition) {
       case -1: {
-        vTaskResume(TaskHandle_Input);
-        // vTaskSuspend(TaskHandle_Timer);
-        vTaskSuspend(TaskHandle_Pause);
-        vTaskSuspend(TaskHandle_SpeadRead);
-        speed_req = 0;
-        lcd.clear();
-        stateCondition++;
-      }break;
-      case 0: {
-        vTaskResume(TaskHandle_Input);
-        vTaskSuspend(TaskHandle_Pause);
-        temperatur = ((encoderValue / 4) % 66) + 25;
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-      }break;
-      case 1: {
-        kecepatan = (encoderValue / 4) % 71 + 10;
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-      }break;
-      case 2: {
-        jam = (encoderValue / 4) % 25;
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-      }break;
-      case 3: {
-        menit = (encoderValue / 4) % 60;
-        printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-      }break;
-      case 4: {
-        if (forward) {
+          vTaskResume(TaskHandle_Input);
+          vTaskSuspend(TaskHandle_Pause);
+          vTaskSuspend(TaskHandle_SpeadRead);
+          speed_req = 0;
           lcd.clear();
-          stateCondition ++;
-        } else {
-          lcd.clear();
-          stateCondition --;
-        }
-      }break;
-      case 5: {
-        lcd.setCursor(0, 0);
-        lcd.print("Lanjutkan Pengadukan");
-        lcd.setCursor(3, 1);
-        lcd.print("Ya");
-        lcd.setCursor(3, 2);
-        lcd.print("Tidak");
-        if (((encoderValue / 4) % 2) == 0) {
-          lcd.setCursor(9, 1);
-          lcd.write(byte(0));
-          lcd.setCursor(9, 2);
-          lcd.print(" ");
-          startProcess = 1;
-          // Serial.println(startProcess);
-        }
-        else {
-          lcd.setCursor(9, 1);
-          lcd.print(" ");
-          lcd.setCursor(9, 2);
-          lcd.write(byte(0));
-          startProcess = 0;
-          // Serial.println(startProcess);
-        }
-      }break;
-      case 6: {
-        if (startProcess) {
-          stateCondition = 7;
-          lcd.clear();
-        }
-        else {
-          forward = 1;
-          stateCondition = -1;
-        }
-      }break;
-      case 7: {
-        // local variable
-        unsigned int piece;
-        double percent;
-
-        lcd.setCursor(0,0);
-        lcd.print("Memanaskan");
-
-        // calculation from sensor read
-        vTaskDelay(10);
-        value += 1;
-        value = constrain(value, 0, 99);
-
-        if (value == 99) {
           stateCondition++;
-          value = 0;
-        }
+        } break;
+      case STATE_INPUT_TEMP: {
+          vTaskResume(TaskHandle_Input);
+          vTaskSuspend(TaskHandle_Pause);
+          temperatur = ((encoderValue / 4) % 66) + 25;
+          printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        } break;
+      case STATE_INPUT_RPM: {
+          kecepatan = (encoderValue / 4) % 71 + 10;
+          printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        } break;
+      case STATE_INPUT_JAM: {
+          jam = (encoderValue / 4) % 25;
+          printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        } break;
+      case STATE_INPUT_MENIT: {
+          menit = (encoderValue / 4) % 60;
+          printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+        } break;
+      case STATE_WAIT_NEXT: {
+          if (forward) {
+            lcd.clear();
+            stateCondition ++;
+          } else {
+            lcd.clear();
+            stateCondition --;
+          }
+        } break;
+      case STATE_CONFIRM: {
+          lcd.setCursor(0, 0);
+          lcd.print("Lanjutkan Pengadukan");
+          lcd.setCursor(3, 1);
+          lcd.print("Ya");
+          lcd.setCursor(3, 2);
+          lcd.print("Tidak");
+          if (((encoderValue / 4) % 2) == 0) {
+            lcd.setCursor(9, 1);
+            lcd.write(byte(0));
+            lcd.setCursor(9, 2);
+            lcd.print(" ");
+            startProcess = 1;
+            // Serial.println(startProcess);
+          }
+          else {
+            lcd.setCursor(9, 1);
+            lcd.print(" ");
+            lcd.setCursor(9, 2);
+            lcd.write(byte(0));
+            startProcess = 0;
+            // Serial.println(startProcess);
+          }
+        } break;
+      case STATE_START_PROCESS: {
+          if (startProcess) {
+            stateCondition = STATE_PANAS_AWAL;
+            lcd.clear();
+          }
+          else {
+            forward = 1;
+            stateCondition = STATE_INIT;
+          }
+        } break;
+      case STATE_PANAS_AWAL: {
+          // local variable
+          unsigned int piece;
+          double percent;
 
-        percent = value;
-        double position = (columnLength / 100 * percent);
+          lcd.setCursor(0, 0);
+          lcd.print("Memanaskan");
 
-        lcd.setCursor(position,2);
-        piece = (int)(position * 5) % 5;
-    
-        // drawing charater's colums
-        // if (piece == 0) {
-        //   lcd.write(byte(1));
-        // } else if (piece == 1) {
-        //   lcd.write(byte(2));
-        // } else if (piece == 2) {
-        //   lcd.write(byte(3));
-        // } else if (piece == 3) {
-        //   lcd.write(byte(4));
-        // } else {
-        //   lcd.write(byte(5));          
-        // }
-        
-        switch (piece) {
-          case 0: {
-            lcd.write(byte(1));
-          }break;
-          case 1: {
-            lcd.write(byte(2));
-          }break;
-          case 2: {
-            lcd.write(byte(3));
-          }break;
-          case 3: {
-            lcd.write(byte(4));
-          }break;
-          case 4: {
-            lcd.write(byte(5));
-          }break;
-        }
-      }break;
-      case 8: {  // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
-        // Serial.print(temperatur);
-        // Serial.print(" ");
-        // Serial.print(kecepatan);
-        // Serial.print(" ");
-        // Serial.print(jam);
-        // Serial.print(" ");
-        // Serial.println(menit);
-        lcd.clear();
-        vTaskResume(TaskHandle_SpeadRead);
-        durasi = jam * 3600 + menit * 60;
-        speed_req = kecepatan;        
-        // vTaskResume(TaskHandle_Timer);
-        vTaskResume(TaskHandle_Pause);
-        vTaskSuspend(TaskHandle_Input);
-      }break;
-      case 9: {  // pause
-        speed_req = 0;
-        // vTaskSuspend(TaskHandle_Timer);
-        vTaskSuspend(TaskHandle_SpeadRead);
-        Serial.println("Timer Pause");
-      }break;
-      case 10: { // timer done
-        speed_req = 0;
-        // vTaskSuspend(TaskHandle_Timer);
-        vTaskSuspend(TaskHandle_SpeadRead);
-        vTaskSuspend(TaskHandle_Pause);
-        Serial.println("Timer Done");        
-      }break;      
+          //PERINTAH PANAS MASUK SINI
+          
+
+          // calculation from sensor read
+          vTaskDelay(10);
+          value += 1;
+          value = constrain(value, 0, 99);
+
+          if (value == 99) {
+            stateCondition++;
+            value = 0;
+          }
+
+          percent = value;
+          double position = (columnLength / 100 * percent);
+
+          lcd.setCursor(position, 2);
+          piece = (int)(position * 5) % 5;
+
+          // drawing charater's colums
+          // if (piece == 0) {
+          //   lcd.write(byte(1));
+          // } else if (piece == 1) {
+          //   lcd.write(byte(2));
+          // } else if (piece == 2) {
+          //   lcd.write(byte(3));
+          // } else if (piece == 3) {
+          //   lcd.write(byte(4));
+          // } else {
+          //   lcd.write(byte(5));
+          // }
+
+          switch (piece) {
+            case 0: {
+                lcd.write(byte(1));
+              } break;
+            case 1: {
+                lcd.write(byte(2));
+              } break;
+            case 2: {
+                lcd.write(byte(3));
+              } break;
+            case 3: {
+                lcd.write(byte(4));
+              } break;
+            case 4: {
+                lcd.write(byte(5));
+              }
+              break;
+          }
+        } break;
+      case STATE_START_ROT: {  // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
+          // Serial.print(temperatur);
+          // Serial.print(" ");
+          // Serial.print(kecepatan);
+          // Serial.print(" ");
+          // Serial.print(jam);
+          // Serial.print(" ");
+          // Serial.println(menit);
+          lcd.clear();
+          vTaskResume(TaskHandle_SpeadRead);
+          durasi = jam * 3600 + menit * 60;
+          timerAlarmEnable(timer);
+          speed_req = kecepatan;
+          // vTaskResume(TaskHandle_Timer);
+          vTaskResume(TaskHandle_Pause);
+          vTaskSuspend(TaskHandle_Input);
+        } break;
+      case STATE_PAUSE: {  // pause
+          speed_req = 0;
+          // vTaskSuspend(TaskHandle_Timer);
+          vTaskSuspend(TaskHandle_SpeadRead);
+          // Serial.println("Timer Pause");
+        } break;
+      case STATE_DONE: { // timer done
+          speed_req = 0;
+          // vTaskSuspend(TaskHandle_Timer);
+          vTaskSuspend(TaskHandle_SpeadRead);
+          vTaskSuspend(TaskHandle_Pause);
+          // Serial.println("Timer Done");
+        } break;
     }
     // Serial.println("Task Display");
     vTaskDelay(100);
@@ -507,7 +531,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       sum_error += error;
       sum_error = constrain(sum_error, -2000, 2000);
       PWM_val = constrain(pidTerm, 0, 255);
-      
+
       // PWM signal
       ledcWrite(pwmChannel, PWM_val);
 
@@ -515,7 +539,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       // Serial.println("Task PWM Calculator");
     }
     vTaskDelay(40);
-  }   
+  }
 }
 
 void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
@@ -530,7 +554,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   xLastWakeTimeSpeedRead = xTaskGetTickCount();
 
   for (;;) {  // A Task shall never return or exit.
-    vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );       
+    vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
 
     // motor use gear ratio 1 : 46.8512
     // speed from high speed gear
@@ -538,7 +562,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     newposition = encoderMotorValue / 22;
     vel = (newposition - oldposition);
     oldposition = newposition;
-    
+
     float real_valueRPS = vel * 50;    // rps
     // Serial.print(real_valueRPS);
     // Serial.print(" ");
@@ -567,7 +591,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 //     if (counterTick < durasi) {
 //       counterTick++;
 //     } else {
-//       stateCondition = 10;
+//       stateCondition = STATE_DONE;
 //     }
 
 //     // Serial.println("Task Timer");
@@ -603,7 +627,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   if (buffSC == 0) {
     lcd.setCursor(19, 0);
     lcd.write(byte(0));
-  } 
+  }
   else {
     lcd.setCursor(19, 0);
     lcd.print(" ");
@@ -675,7 +699,7 @@ void printMotorInfo() {
 }
 
 // interrupt when any change happen
-void updateEncoderMotor(){
+void updateEncoderMotor() {
   encoderMotorValue ++;
 }
 
