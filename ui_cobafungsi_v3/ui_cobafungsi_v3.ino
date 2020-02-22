@@ -84,27 +84,27 @@ int lastLSB = 0;
 volatile int timerCounter;
 
 // setting PWM properties
-const int freq = 256000;
-const int pwmChannel = 0;
-const int resolution = 8;
+const int MTR_freq = 256000;
+const int MTR_pwmChannel = 0;
+const int MTR_resolution = 8;
 
 // PID controller
-int speed_req = 0;        // in rpm
-float speed_actual = 0;   // in rpm
-double Kp = 0.5;
-double Kd = 0.01;
-double Ki = 0.03;
-float error = 0;
-float last_error = 0;
-float sum_error = 0;
-int PWM_val = 0;
-float pidTerm = 0;
+int MTR_speed_req = 0;    // in rpm
+float MTR_speed_actual = 0;   // in rpm
+double MTR_Kp = 0.5;
+double MTR_Kd = 0.01;
+double MTR_Ki = 0.03;
+float MTR_error = 0;
+float MTR_last_error = 0;
+float MTR_sum_error = 0;
+int MTR_PWM_val = 0;
+float MTR_pidTerm = 0;
 
 // for the encoder
-double newposition;
-double oldposition = 0;
-double vel;
-volatile double encoderMotorValue = 0;
+double MTR_newposition;
+double MTR_oldposition = 0;
+double MTR_vel;
+volatile double MTR_encoderMotorValue = 0;
 
 // flag for LCD state needs
 boolean forward = 1;
@@ -139,6 +139,14 @@ byte loadingBar[5][8] = {
   {0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E},
   {0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F}
 };
+
+// create frame for loading bar
+byte frame[4][8] = {
+  {0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01},
+  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F},
+  {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10},
+  {0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+}
 
 
 /*---------------------------------------------------------------------*/
@@ -199,13 +207,21 @@ void setup() {
     3,                        /* Priority of the task. */
     &TaskHandle_Input);       /* Task handle. */
 
-  // xTaskCreate(
-  //   taskTimer,                /* Task function. */
-  //   "TaskTimer",              /* String with name of task. */
-  //   10000,                    /* Stack size in bytes. */
-  //   NULL,                     /* Parameter passed as input of the task */
-  //   4,                        /* Priority of the task. */
-  //   &TaskHandle_Timer);       /* Task handle. */
+  xTaskCreate(
+    TaskPMNS,                 /* Task function. */
+    "TaskPMNS",               /* String with name of task. */
+    10000,                    /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    4,                        /* Priority of the task. */
+    NULL);                    /* Task handle. */
+
+  xTaskCreate(
+    TaskPWMPMNS,              /* Task function. */
+    "TaskPWMPMNS",            /* String with name of task. */
+    10000,                    /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    4,                        /* Priority of the task. */
+    NULL);                    /* Task handle. */
 
   xTaskCreate(
     taksPause,                /* Task function. */
@@ -215,15 +231,7 @@ void setup() {
     1,                        /* Priority of the task. */
     &TaskHandle_Pause);       /* Task handle. */
 
-  //  xTaskCreate(
-  //    taskDisplay,      /* Task function. */
-  //    "TaskTwo",        /* String with name of task. */
-  //    10000,            /* Stack size in bytes. */
-  //    NULL,             /* Parameter passed as input of the task */
-  //    10,               /* Priority of the task. */
-  //    NULL);            /* Task handle. */
   taskDisplay(NULL);
-  // vTaskSuspend(TaskHandle_Timer);
   vTaskSuspend(TaskHandle_SpeadRead);
   vTaskSuspend(TaskHandle_Input);
   vTaskSuspend(TaskHandle_Pause);
@@ -335,22 +343,26 @@ void taskDisplay( void * parameter)
 
   // initialize the LCD
   lcd.begin();
-  lcd.createChar(0, arrow);
-  lcd.createChar(1, loadingBar[0]);
-  lcd.createChar(2, loadingBar[1]);
-  lcd.createChar(3, loadingBar[2]);
-  lcd.createChar(4, loadingBar[3]);
-  lcd.createChar(5, loadingBar[4]);
+  lcd.createChar(0, arrow);           // arrow
+  lcd.createChar(1, loadingBar[0]);   // loading bar |
+  lcd.createChar(2, loadingBar[1]);   // loading bar ||
+  lcd.createChar(3, loadingBar[2]);   // loading bar |||
+  lcd.createChar(4, loadingBar[3]);   // loading bar ||||
+  lcd.createChar(5, loadingBar[4]);   // loading bar |||||
+  lcd.createCHar(6, frame[0]);        // frame right
+  lcd.createCHar(6, frame[1]);        // frame bottom
+  lcd.createCHar(6, frame[2]);        // frame left
+  lcd.createCHar(6, frame[3]);        // frame top
 
   unsigned int value = 0; //ini value apa
 
   for (;;) {
     switch (stateCondition) {
-      case -1: {
+      case STATE_INIT: {
           vTaskResume(TaskHandle_Input);
           vTaskSuspend(TaskHandle_Pause);
           vTaskSuspend(TaskHandle_SpeadRead);
-          speed_req = 0;
+          MTR_speed_req = 0;
           lcd.clear();
           stateCondition++;
         } break;
@@ -416,6 +428,20 @@ void taskDisplay( void * parameter)
           }
         } break;
       case STATE_PANAS_AWAL: {
+          // print frame for loading bar
+          lcd.setCursor(0, 1);
+          for(int i = 0; i < 20; i++) {
+            lcd.write(byte(9));
+          }
+          lcd.setCursor(0, 2);
+          lcd.write(byte(8));
+          lcd.setCursor(19, 2);
+          lcd.write(byte(6));
+          lcd.setCursor(0, 3);
+          for(int i = 0; i < 20; i++) {
+            lcd.write(byte(7));
+          }
+          
           // local variable
           unsigned int piece;
           double percent;
@@ -424,7 +450,7 @@ void taskDisplay( void * parameter)
           lcd.print("Memanaskan");
 
           //PERINTAH PANAS MASUK SINI
-          
+
 
           // calculation from sensor read
           vTaskDelay(10);
@@ -486,19 +512,19 @@ void taskDisplay( void * parameter)
           vTaskResume(TaskHandle_SpeadRead);
           durasi = jam * 3600 + menit * 60;
           timerAlarmEnable(timer);
-          speed_req = kecepatan;
+          MTR_speed_req = kecepatan;
           // vTaskResume(TaskHandle_Timer);
           vTaskResume(TaskHandle_Pause);
           vTaskSuspend(TaskHandle_Input);
         } break;
       case STATE_PAUSE: {  // pause
-          speed_req = 0;
+          MTR_speed_req = 0;
           // vTaskSuspend(TaskHandle_Timer);
           vTaskSuspend(TaskHandle_SpeadRead);
           // Serial.println("Timer Pause");
         } break;
       case STATE_DONE: { // timer done
-          speed_req = 0;
+          MTR_speed_req = 0;
           // vTaskSuspend(TaskHandle_Timer);
           vTaskSuspend(TaskHandle_SpeadRead);
           vTaskSuspend(TaskHandle_Pause);
@@ -514,26 +540,26 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
 {
   (void) pvParameters;
 
-  ledcSetup(pwmChannel, freq, resolution);
+  ledcSetup(MTR_pwmChannel, MTR_freq, MTR_resolution);
 
   // attach the channel to the GPIO to be controlled
-  ledcAttachPin(pwm, pwmChannel);
+  ledcAttachPin(pwm, MTR_pwmChannel);
 
   for (;;) {  // A Task shall never return or exit.
     // PID calculation
-    if (speed_req == 0) {
+    if (MTR_speed_req == 0) {
       // PWM signal
-      ledcWrite(pwmChannel, 0);
+      ledcWrite(MTR_pwmChannel, 0);
     } else {
-      error = speed_req - speed_actual;
-      pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki + 185;
-      last_error = error;
-      sum_error += error;
-      sum_error = constrain(sum_error, -2000, 2000);
-      PWM_val = constrain(pidTerm, 0, 255);
+      MTR_error = MTR_speed_req - MTR_speed_actual;
+      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + MTR_sum_error * MTR_Ki + 185;
+      MTR_last_error = MTR_error;
+      MTR_sum_error += MTR_error;
+      MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
+      MTR_PWM_val = constrain(MTR_pidTerm, 0, 255);
 
       // PWM signal
-      ledcWrite(pwmChannel, PWM_val);
+      ledcWrite(MTR_pwmChannel, MTR_PWM_val);
 
       // printMotorInfo();
       // Serial.println("Task PWM Calculator");
@@ -558,12 +584,12 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 
     // motor use gear ratio 1 : 46.8512
     // speed from high speed gear
-    // every 1 rotation encoderMotorValue equal to 22
-    newposition = encoderMotorValue / 22;
-    vel = (newposition - oldposition);
-    oldposition = newposition;
+    // every 1 rotation MTR_encoderMotorValue equal to 22
+    MTR_newposition = MTR_encoderMotorValue / 22;
+    MTR_vel = (MTR_newposition - MTR_oldposition);
+    MTR_oldposition = MTR_newposition;
 
-    float real_valueRPS = vel * 50;    // rps
+    float real_valueRPS = MTR_vel * 50;    // rps
     // Serial.print(real_valueRPS);
     // Serial.print(" ");
 
@@ -572,31 +598,12 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 
     // speed from slow speed gear
     float real_valueRPM = (real_valueRPS / 46.8512) * 60;
-    speed_actual = real_valueRPM;
+    MTR_speed_actual = real_valueRPM;
 
     // Serial.println("Task Speed Read");
     //  printMotorInfo();
   }
 }
-
-// void taskTimer(void* v) {
-//   unsigned int counterTick = 0;
-//   TickType_t xLastWakeTimeTimer = xTaskGetTickCount();
-//   for (;;) {
-//     vTaskDelayUntil( &xLastWakeTimeTimer, 1000);
-//     //Recursive part
-//     if (counterTick == durasi) {
-//       vTaskSuspend(NULL);
-//     }
-//     if (counterTick < durasi) {
-//       counterTick++;
-//     } else {
-//       stateCondition = STATE_DONE;
-//     }
-
-//     // Serial.println("Task Timer");
-//   }
-// }
 
 
 /*---------------------------------------------------------------------*/
@@ -686,21 +693,21 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
 
 // function for printing data
 void printMotorInfo() {
-  // Serial.print("Setpoint: ");    Serial.println(speed_req);
-  // Serial.print("Speed RPM: ");    Serial.println(speed_actual);
-  // Serial.print("error: ");     Serial.println(error);
-  // Serial.print("last error: ");     Serial.println(last_error);
-  // Serial.print("sum error: ");     Serial.println(sum_error);
-  // Serial.print("PWM_val: ");      Serial.println(PWM_val);
-  // Serial.print("PID Term: ");     Serial.println(pidTerm);
-  Serial.print(speed_req);
+  // Serial.print("Setpoint: ");    Serial.println(MTR_speed_req);
+  // Serial.print("Speed RPM: ");    Serial.println(MTR_speed_actual);
+  // Serial.print("MTR_error: ");     Serial.println(MTR_error);
+  // Serial.print("last error: ");     Serial.println(MTR_last_error);
+  // Serial.print("sum error: ");     Serial.println(MTR_sum_error);
+  // Serial.print("MTR_PWM_val: ");      Serial.println(MTR_PWM_val);
+  // Serial.print("PID Term: ");     Serial.println(MTR_MTR_pidTerm);
+  Serial.print(MTR_speed_req);
   Serial.print("\t");
-  Serial.println(speed_actual);
+  Serial.println(MTR_speed_actual);
 }
 
 // interrupt when any change happen
 void updateEncoderMotor() {
-  encoderMotorValue ++;
+  MTR_encoderMotorValue ++;
 }
 
 // interrupt when any change happen
