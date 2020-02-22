@@ -1,29 +1,24 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+//Definition
 #define TEMP_SENSOR_PIN 4
-OneWire oneWire(TEMP_SENSOR_PIN);
-DallasTemperature sensor(&oneWire);
-
-//Pin Definition
 #define SSR_PIN 2 
+
 #define BB 1
 
 #define PMNS_WAIT_TIME 40
 #define PMNS_ON_TIME 40
-
 #define PMNS_SET_POINT_DEBUG 90
-#define PMNS_PERIOD_PWM 400
 
 #define PMNS_STATE_START 0
 #define PMNS_STATE_STEADY 1
 
-
-TaskHandle_t xPWMHandle = NULL;
+OneWire oneWire(TEMP_SENSOR_PIN);
+DallasTemperature sensor(&oneWire);
 
 unsigned int PMNS_pemanas_state = 0;
 unsigned int PMNS_flag_pemanas_awal_done = 0;
-
 double TempRead = 0;
 
 double get_temp(DallasTemperature sensor) {

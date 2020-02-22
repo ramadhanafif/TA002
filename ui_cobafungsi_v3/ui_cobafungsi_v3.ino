@@ -40,6 +40,19 @@
 #define STATE_PAUSE 9
 #define STATE_DONE 10
 
+/* PEMANAS Definitions*/
+#define TEMP_SENSOR_PIN 25
+#define SSR_PIN 26
+
+#define BB 1
+
+#define PMNS_WAIT_TIME 40
+#define PMNS_ON_TIME 40
+#define PMNS_PERIOD_PWM 400
+#define PMNS_SET_POINT_DEBUG 80
+
+#define PMNS_STATE_START 0
+#define PMNS_STATE_STEADY 1
 
 /*---------------------------------------------------------------------*/
 /*------------------------------TIMER----------------------------------*/
@@ -53,6 +66,7 @@ hw_timer_t * timer = NULL;
 TaskHandle_t TaskHandle_Pause;
 TaskHandle_t TaskHandle_Input;
 TaskHandle_t TaskHandle_SpeadRead;
+TaskHandle_t TaskHandle_PMNS;
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -111,6 +125,10 @@ boolean forward = 1;
 boolean startProcess = 1;
 boolean pauseState = 0;
 
+// PEMANAS
+unsigned int PMNS_pemanas_state = 0;
+unsigned int PMNS_flag_pemanas_awal_done = 0;
+double TempRead = 0;
 
 /*---------------------------------------------------------------------*/
 /*------------------------------OBJECTS--------------------------------*/
@@ -124,6 +142,9 @@ SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
+//PEMANAS
+OneWire oneWire(TEMP_SENSOR_PIN);
+DallasTemperature sensor(&oneWire);
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------CHAR LIBS-------------------------------*/
@@ -146,7 +167,7 @@ byte frame[4][8] = {
   {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F},
   {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10},
   {0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-}
+};
 
 
 /*---------------------------------------------------------------------*/
@@ -200,28 +221,12 @@ void setup() {
     &TaskHandle_Input);       /* Task handle. */
 
   xTaskCreate(
-    taskInput,                /* Task function. */
-    "TaskInput",              /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
-    NULL,                     /* Prameter passed as input of the task */
-    3,                        /* Priority of the task. */
-    &TaskHandle_Input);       /* Task handle. */
-
-  xTaskCreate(
-    TaskPMNS,                 /* Task function. */
-    "TaskPMNS",               /* String with name of task. */
+    taskPMNS_MAIN,                 /* Task function. */
+    "taskPMNS_MAIN",               /* String with name of task. */
     10000,                    /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
     4,                        /* Priority of the task. */
-    NULL);                    /* Task handle. */
-
-  xTaskCreate(
-    TaskPWMPMNS,              /* Task function. */
-    "TaskPWMPMNS",            /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
-    NULL,                     /* Parameter passed as input of the task */
-    4,                        /* Priority of the task. */
-    NULL);                    /* Task handle. */
+    &TaskHandle_PMNS);                    /* Task handle. */
 
   xTaskCreate(
     taksPause,                /* Task function. */
@@ -235,6 +240,7 @@ void setup() {
   vTaskSuspend(TaskHandle_SpeadRead);
   vTaskSuspend(TaskHandle_Input);
   vTaskSuspend(TaskHandle_Pause);
+  vTaskSuspend(TaskHandle_PMNS);
 }
 
 
@@ -349,10 +355,10 @@ void taskDisplay( void * parameter)
   lcd.createChar(3, loadingBar[2]);   // loading bar |||
   lcd.createChar(4, loadingBar[3]);   // loading bar ||||
   lcd.createChar(5, loadingBar[4]);   // loading bar |||||
-  lcd.createCHar(6, frame[0]);        // frame right
-  lcd.createCHar(6, frame[1]);        // frame bottom
-  lcd.createCHar(6, frame[2]);        // frame left
-  lcd.createCHar(6, frame[3]);        // frame top
+  lcd.createChar(6, frame[0]);        // frame right
+  lcd.createChar(7, frame[1]);        // frame bottom
+  lcd.createChar(8, frame[2]);        // frame left
+  lcd.createChar(9, frame[3]);        // frame top
 
   unsigned int value = 0; //ini value apa
 
@@ -430,7 +436,7 @@ void taskDisplay( void * parameter)
       case STATE_PANAS_AWAL: {
           // print frame for loading bar
           lcd.setCursor(0, 1);
-          for(int i = 0; i < 20; i++) {
+          for (int i = 0; i < 20; i++) {
             lcd.write(byte(9));
           }
           lcd.setCursor(0, 2);
@@ -438,10 +444,10 @@ void taskDisplay( void * parameter)
           lcd.setCursor(19, 2);
           lcd.write(byte(6));
           lcd.setCursor(0, 3);
-          for(int i = 0; i < 20; i++) {
+          for (int i = 0; i < 20; i++) {
             lcd.write(byte(7));
           }
-          
+
           // local variable
           unsigned int piece;
           double percent;
@@ -450,22 +456,30 @@ void taskDisplay( void * parameter)
           lcd.print("Memanaskan");
 
           //PERINTAH PANAS MASUK SINI
-
-
-          // calculation from sensor read
-          vTaskDelay(10);
-          value += 1;
-          value = constrain(value, 0, 99);
-
-          if (value == 99) {
-            stateCondition++;
-            value = 0;
+          vTaskResume(TaskHandle_PMNS);
+          PMNS_pemanas_state = PMNS_STATE_START;
+          
+          if (PMNS_flag_pemanas_awal_done) {
+            stateCondition = STATE_START_ROT;
+            PMNS_pemanas_state = PMNS_STATE_STEADY;
+            percent = 100;
           }
 
-          percent = value;
-          double position = (columnLength / 100 * percent);
+          // // calculation from sensor read
+          // vTaskDelay(10);
+          // value += 1;
+          // value = constrain(value, 0, 99);
 
-          lcd.setCursor(position, 2);
+          // if (value == 99) {
+          //   stateCondition++;
+          //   value = 0;
+          // }
+
+          // percent = value;
+          percent = (TempRead - 25) * 100 / (temperatur - 25);
+          double position = ((columnLength - 2) / 100 * percent);
+
+          lcd.setCursor((position + 1), 2);
           piece = (int)(position * 5) % 5;
 
           // drawing charater's colums
@@ -605,6 +619,109 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   }
 }
 
+void taskPMNS_MAIN(void* v) {
+  double setPoint = PMNS_SET_POINT_DEBUG;
+  double prevtime = millis();
+  double cumerror = 0;
+
+  unsigned int prev_TempRead;
+  unsigned int temp_counter = 0;
+  unsigned int PMNS_ssr = 2;
+  unsigned int PMNS_counter = 0;
+
+  const int pwm_freq = 2;
+  const int pwm_ledChannel = 2;
+  const int pwm_resolution = 15;
+
+  unsigned int pwm_attach = 0;
+
+  ledcSetup(pwm_ledChannel, pwm_freq, pwm_resolution);
+
+  float dutyCycle = 0;
+
+  sensor.begin();
+
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  for (;;) {
+    vTaskDelayUntil( &xLastWakeTime, 1000);
+    TempRead = get_temp(sensor);
+    switch (PMNS_pemanas_state) {
+      case PMNS_STATE_START: //PID
+        {
+          //PID calculation
+          double output = PMNS_computePID(TempRead, setPoint, &prevtime, &cumerror);
+
+          //Normalization PID to dutyCycle (0 - 4095)
+          dutyCycle = output / 500.0;
+          if (dutyCycle > 1.0)
+            dutyCycle = 1;
+          else if (dutyCycle < 0.0)
+            dutyCycle = 0;
+          dutyCycle *= 4095;
+
+          //PWM pin initialization
+          if (!pwm_attach)
+          {
+            ledcAttachPin(SSR_PIN, pwm_ledChannel);
+            pwm_attach = 1;
+          }
+
+          //PWM update dutyCycle
+          ledcWrite(pwm_ledChannel, dutyCycle);
+
+          //Check for temperature steadiness
+          if (abs(TempRead - setPoint) <= 2.5) {
+            temp_counter++;
+          }
+          if (temp_counter >= 60) {
+            PMNS_flag_pemanas_awal_done = 1;
+          }
+          break;
+        }
+      case PMNS_STATE_STEADY: //On Off
+        {
+          //Stop PWM
+          if (pwm_attach) {
+            ledcDetachPin(SSR_PIN);
+            pwm_attach = 0;
+            pinMode(SSR_PIN, OUTPUT);
+          }
+
+          switch (PMNS_ssr)
+          {
+            case 0: //nunggu sampe turun dari kelebihan suhu
+              digitalWrite(SSR_PIN, 0);
+              if (TempRead <= setPoint - BB) {
+                if (abs(prev_TempRead - TempRead) < 2) {
+                  PMNS_ssr = 1; //change state
+                  PMNS_counter = PMNS_ON_TIME;
+                }
+              }
+              break;
+            case 1: //decrement from PMNS_ON_TIME until 0
+              digitalWrite(SSR_PIN, PMNS_ssr);
+              PMNS_counter--;
+              if (PMNS_counter == 0)
+              {
+                PMNS_ssr = 2;
+              }
+              break;
+            case 2: //nunggu TIME_ON s
+              digitalWrite(SSR_PIN, 0);
+              PMNS_counter++;
+              if (PMNS_counter == PMNS_WAIT_TIME)
+              {
+                PMNS_ssr = 0;
+              }
+              break;
+          }
+          prev_TempRead = TempRead;
+
+          break; //break state 1
+        }
+    }
+  }
+}
 
 /*---------------------------------------------------------------------*/
 /*------------------------------FUNCTIONS------------------------------*/
@@ -726,4 +843,30 @@ void updateEncoder() {
   }
 
   lastEncoded = encoded; //store this value for next time
+}
+
+double get_temp(DallasTemperature sensor) {
+  sensor.requestTemperatures();
+  return sensor.getTempCByIndex(0);
+}
+
+double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, double* cumError) {
+  double error = 0;
+  double elapsedTime = 0;
+  double currentTime;
+
+  double kp = 8; //10
+  double ki = 0.005; //0.011
+
+  currentTime = millis() / 1000;                      //get current time
+  elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
+
+  error = setPoint - inp;                             // determine error
+  *cumError += error * elapsedTime;                   // compute integral
+
+  double out = kp * error + ki * *cumError;           // + kd * rateError;          //PID output
+
+  *previousTime = currentTime;                        //remember current time
+
+  return out;                                         //have function return the PID output
 }
