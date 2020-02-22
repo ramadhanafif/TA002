@@ -130,6 +130,8 @@ unsigned int PMNS_pemanas_state = 0;
 unsigned int PMNS_flag_pemanas_awal_done = 0;
 double TempRead = 0;
 
+unsigned int createPMNS = 1;
+
 /*---------------------------------------------------------------------*/
 /*------------------------------OBJECTS--------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -220,13 +222,13 @@ void setup() {
     3,                        /* Priority of the task. */
     &TaskHandle_Input);       /* Task handle. */
 
-  xTaskCreate(
-    taskPMNS_MAIN,                 /* Task function. */
-    "taskPMNS_MAIN",               /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
-    NULL,                     /* Parameter passed as input of the task */
-    4,                        /* Priority of the task. */
-    &TaskHandle_PMNS);                    /* Task handle. */
+  // xTaskCreate(
+  //   taskPMNS_MAIN,                 /* Task function. */
+  //   "taskPMNS_MAIN",               /* String with name of task. */
+  //   10000,                    /* Stack size in bytes. */
+  //   NULL,                     /* Parameter passed as input of the task */
+  //   4,                        /* Priority of the task. */
+  //   &TaskHandle_PMNS);                    /* Task handle. */
 
   xTaskCreate(
     taksPause,                /* Task function. */
@@ -240,7 +242,7 @@ void setup() {
   vTaskSuspend(TaskHandle_SpeadRead);
   vTaskSuspend(TaskHandle_Input);
   vTaskSuspend(TaskHandle_Pause);
-  vTaskSuspend(TaskHandle_PMNS);
+  // vTaskSuspend(TaskHandle_PMNS);
 }
 
 
@@ -437,15 +439,15 @@ void taskDisplay( void * parameter)
           // print frame for loading bar
           lcd.setCursor(0, 1);
           for (int i = 0; i < 20; i++) {
-            lcd.write(byte(9));
+            lcd.write(byte(7));
           }
           lcd.setCursor(0, 2);
-          lcd.write(byte(8));
-          lcd.setCursor(19, 2);
           lcd.write(byte(6));
+          lcd.setCursor(19, 2);
+          lcd.write(byte(8));
           lcd.setCursor(0, 3);
           for (int i = 0; i < 20; i++) {
-            lcd.write(byte(7));
+            lcd.write(byte(9));
           }
 
           // local variable
@@ -456,7 +458,17 @@ void taskDisplay( void * parameter)
           lcd.print("Memanaskan");
 
           //PERINTAH PANAS MASUK SINI
-          vTaskResume(TaskHandle_PMNS);
+          if(createPMNS)
+          {
+            xTaskCreate(
+            taskPMNS_MAIN,                 /* Task function. */
+            "taskPMNS_MAIN",               /* String with name of task. */
+            10000,                    /* Stack size in bytes. */
+            NULL,                     /* Parameter passed as input of the task */
+            4,                        /* Priority of the task. */
+            &TaskHandle_PMNS);                    /* Task handle. */
+            createPMNS = 0;
+          }
           PMNS_pemanas_state = PMNS_STATE_START;
           
           if (PMNS_flag_pemanas_awal_done) {
@@ -546,6 +558,7 @@ void taskDisplay( void * parameter)
         } break;
     }
     // Serial.println("Task Display");
+    Serial.println(stateCondition);
     vTaskDelay(100);
   }
 }
