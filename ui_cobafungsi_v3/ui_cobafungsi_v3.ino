@@ -269,13 +269,7 @@ void taskInput( void * parameter )
   pinMode(switchPinWhite, INPUT_PULLUP);
   pinMode(switchPinBlack, INPUT_PULLUP);
 
-  xTaskCreate(
-    taskInput,                /* Task function. */
-    "TaskInput",              /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
-    NULL,                     /* Prameter passed as input of the task */
-    3,                        /* Priority of the task. */
-    &TaskHandle_Input);       /* Task handle. */
+  vTaskSuspend(NULL);
 
   for ( ; ; ) {
     // push button action
@@ -379,6 +373,17 @@ void taskDisplay( void * parameter)
   for (;;) {
     switch (stateCondition) {
       case STATE_INIT: {
+        if (flagInputResume) {
+          xTaskCreate(
+            taskInput,                /* Task function. */
+            "TaskInput",              /* String with name of task. */
+            10000,                    /* Stack size in bytes. */
+            NULL,                     /* Prameter passed as input of the task */
+            3,                        /* Priority of the task. */
+            &TaskHandle_Input);       /* Task handle. */
+            flagInputResume = 0;
+        }
+        
           vTaskResume(TaskHandle_Input);
           vTaskSuspend(TaskHandle_Pause);
           vTaskSuspend(TaskHandle_SpeadRead);
@@ -387,7 +392,6 @@ void taskDisplay( void * parameter)
           stateCondition++;
         } break;
       case STATE_INPUT_TEMP: {
-          
           vTaskResume(TaskHandle_Input);
           vTaskSuspend(TaskHandle_Pause);
           temperatur = ((encoderValue / 4) % 66) + 25;
