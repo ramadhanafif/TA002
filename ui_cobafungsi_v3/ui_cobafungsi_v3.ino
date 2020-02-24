@@ -391,7 +391,7 @@ void taskDisplay( void * parameter)
           stateCondition++;
         } break;
       case STATE_INPUT_TEMP: {
-          // vTaskResume(TaskHandle_Input); ini ngapain di resume lg
+          // vTaskResume(TaskHandle_Input); //ini ngapain di resume lg
           // vTaskSuspend(TaskHandle_Pause);
           temperatur = ((encoderValue / 4) % 66) + 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
@@ -474,11 +474,11 @@ void taskDisplay( void * parameter)
           lcd.print("Memanaskan");
 
           //PERINTAH PANAS MASUK SINI
-          if (TaskRunPMNS)
+          if (!IsRun_PMNS)
           {
-              TaskRunPMNS = 0;
-
+            vTaskResume(TaskHandle_PMNS);
             PMNS_pemanas_state = PMNS_STATE_START;
+            IsRun_PMNS = 1;
           }
 
           if (PMNS_flag_pemanas_awal_done) {
@@ -545,15 +545,10 @@ void taskDisplay( void * parameter)
           // Serial.print(" ");
           // Serial.println(menit);
           lcd.clear();
-          // vTaskResume(TaskHandle_SpeadRead);
-
-          xTaskCreate(
-            taskSpeedRead_rpm,        /* Task function. */
-            "SpeedRead_rpm",          /* String with name of task. */
-            10000,                    /* Stack size in bytes. */
-            NULL,                     /* Parameter passed as input of the task */
-            3,                        /* Priority of the task. */
-            &TaskHandle_SpeadRead );  /* Task handle. */
+          if (!IsRun_SpeedRead_rpm){
+            vTaskResume(TaskHandle_SpeadRead);
+            IsRun_SpeedRead_rpm = 1;
+          }
           durasi = jam * 3600 + menit * 60;
 
           timerAlarmEnable(timer);
@@ -563,7 +558,7 @@ void taskDisplay( void * parameter)
         } break;
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
-          // vTaskSuspend(TaskHandle_Timer);
+          if (vTaskSuspend)
           vTaskSuspend(TaskHandle_SpeadRead);
           // Serial.println("Timer Pause");
         } break;
@@ -902,4 +897,27 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   *previousTime = currentTime;                        //remember current time
 
   return out;                                         //have function return the PID output
+}
+
+void TaskControl(TaskHandle_t xHandle, unsigned int* statusVar, unsigned int command){
+  if (*statusVar == RUNNING){
+    if (command == RESUME){
+      //do nothing
+      *statusVar = RUNNING;
+    }
+    else if (command == SUSPEND){
+      vTaskSuspend(xHandle);
+      *statusVar = SUSPENDED;
+    }
+  }
+  else if (*statusVar == SUSPENDED){
+    if (command == RESUME){
+      xTaskResume(xHandle);
+      *statusVar = RUNNING;
+    }
+    else if (command == SUSPEND){
+      //do nothing
+      *statusVar = SUSPENDED;
+    }
+  }
 }
