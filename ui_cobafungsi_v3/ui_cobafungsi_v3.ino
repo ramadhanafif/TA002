@@ -26,7 +26,7 @@
 #define pwm 2
 #define encoderMotor 15
 
-/*MAIN State Definitions*/
+/* MAIN State Definitions*/
 #define STATE_INIT -1
 #define STATE_INPUT_TEMP 0
 #define STATE_INPUT_RPM 1
@@ -124,6 +124,9 @@ volatile double MTR_encoderMotorValue = 0;
 boolean forward = 1;
 boolean startProcess = 1;
 boolean pauseState = 0;
+boolean flagInputResume = 1;
+boolean flagSpeedReadResume = 1;
+boolean flagPWMCalcResume = 1;
 
 // PEMANAS
 unsigned int PMNS_pemanas_state = 0;
@@ -214,13 +217,13 @@ void setup() {
     2,                        /* Priority of the task. */
     NULL);                    /* Task handle. */
 
-  xTaskCreate(
-    taskInput,                /* Task function. */
-    "TaskInput",              /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
-    NULL,                     /* Prameter passed as input of the task */
-    3,                        /* Priority of the task. */
-    &TaskHandle_Input);       /* Task handle. */
+  // xTaskCreate(
+  //   taskInput,                /* Task function. */
+  //   "TaskInput",              /* String with name of task. */
+  //   10000,                    /* Stack size in bytes. */
+  //   NULL,                     /* Prameter passed as input of the task */
+  //   3,                        /* Priority of the task. */
+  //   &TaskHandle_Input);       /* Task handle. */
 
   // xTaskCreate(
   //   taskPMNS_MAIN,                 /* Task function. */
@@ -240,7 +243,7 @@ void setup() {
 
   taskDisplay(NULL);
   vTaskSuspend(TaskHandle_SpeadRead);
-  vTaskSuspend(TaskHandle_Input);
+  // vTaskSuspend(TaskHandle_Input);
   vTaskSuspend(TaskHandle_Pause);
   // vTaskSuspend(TaskHandle_PMNS);
 }
@@ -265,6 +268,14 @@ void taskInput( void * parameter )
   pinMode(switchPinGreen, INPUT_PULLUP);
   pinMode(switchPinWhite, INPUT_PULLUP);
   pinMode(switchPinBlack, INPUT_PULLUP);
+
+  xTaskCreate(
+    taskInput,                /* Task function. */
+    "TaskInput",              /* String with name of task. */
+    10000,                    /* Stack size in bytes. */
+    NULL,                     /* Prameter passed as input of the task */
+    3,                        /* Priority of the task. */
+    &TaskHandle_Input);       /* Task handle. */
 
   for ( ; ; ) {
     // push button action
@@ -357,10 +368,11 @@ void taskDisplay( void * parameter)
   lcd.createChar(3, loadingBar[2]);   // loading bar |||
   lcd.createChar(4, loadingBar[3]);   // loading bar ||||
   lcd.createChar(5, loadingBar[4]);   // loading bar |||||
-  lcd.createChar(6, frame[0]);        // frame right
-  lcd.createChar(7, frame[1]);        // frame bottom
-  lcd.createChar(8, frame[2]);        // frame left
-  lcd.createChar(9, frame[3]);        // frame top
+  // max 8 custom char
+  // lcd.createChar(6, frame[0]);        // frame right
+  // lcd.createChar(7, frame[1]);        // frame bottom
+  // lcd.createChar(8, frame[2]);        // frame left
+  // lcd.createChar(9, frame[3]);        // frame top
 
   unsigned int value = 0; //ini value apa
 
@@ -375,6 +387,7 @@ void taskDisplay( void * parameter)
           stateCondition++;
         } break;
       case STATE_INPUT_TEMP: {
+          
           vTaskResume(TaskHandle_Input);
           vTaskSuspend(TaskHandle_Pause);
           temperatur = ((encoderValue / 4) % 66) + 25;
@@ -436,19 +449,19 @@ void taskDisplay( void * parameter)
           }
         } break;
       case STATE_PANAS_AWAL: {
-          // print frame for loading bar
-          lcd.setCursor(0, 1);
-          for (int i = 0; i < 20; i++) {
-            lcd.write(byte(7));
-          }
-          lcd.setCursor(0, 2);
-          lcd.write(byte(6));
-          lcd.setCursor(19, 2);
-          lcd.write(byte(8));
-          lcd.setCursor(0, 3);
-          for (int i = 0; i < 20; i++) {
-            lcd.write(byte(9));
-          }
+          // // print frame for loading bar
+          // lcd.setCursor(0, 1);
+          // for (int i = 0; i < 20; i++) {
+          //   lcd.write(byte(7));
+          // }
+          // lcd.setCursor(0, 2);
+          // lcd.write(byte(6));
+          // lcd.setCursor(19, 2);
+          // lcd.write(byte(8));
+          // lcd.setCursor(0, 3);
+          // for (int i = 0; i < 20; i++) {
+          //   lcd.write(byte(9));
+          // }
 
           // local variable
           unsigned int piece;
@@ -461,13 +474,13 @@ void taskDisplay( void * parameter)
           if(createPMNS)
           {
             xTaskCreate(
-            taskPMNS_MAIN,                 /* Task function. */
-            "taskPMNS_MAIN",               /* String with name of task. */
-            10000,                    /* Stack size in bytes. */
-            NULL,                     /* Parameter passed as input of the task */
-            4,                        /* Priority of the task. */
-            &TaskHandle_PMNS);                    /* Task handle. */
-            createPMNS = 0;
+              taskPMNS_MAIN,                 /* Task function. */
+              "taskPMNS_MAIN",               /* String with name of task. */
+              10000,                    /* Stack size in bytes. */
+              NULL,                     /* Parameter passed as input of the task */
+              4,                        /* Priority of the task. */
+              &TaskHandle_PMNS);                    /* Task handle. */
+              createPMNS = 0;
           }
           PMNS_pemanas_state = PMNS_STATE_START;
           
