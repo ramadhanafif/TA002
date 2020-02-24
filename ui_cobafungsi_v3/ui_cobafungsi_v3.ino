@@ -137,9 +137,9 @@ unsigned int PMNS_pemanas_state = 0;
 unsigned int PMNS_flag_pemanas_awal_done = 0;
 double TempRead = 0;
 
-unsigned int TaskCreatePMNS = 1;
-unsigned int TaskCreateSpeedRead_rpm = 1;
-unsigned int TaskCreateInput = 1;
+unsigned int IsRun_PMNS = 0;
+unsigned int IsRun_SpeedRead_rpm = 0;
+unsigned int IsRun_Input = 0;
 
 /*---------------------------------------------------------------------*/
 /*------------------------------OBJECTS--------------------------------*/
@@ -207,13 +207,13 @@ void setup() {
   timerAttachInterrupt(timer, &onTimer, true);
   timerAlarmWrite(timer, 1000, true);
 
-  // xTaskCreate(
-  //   taskSpeedRead_rpm,        /* Task function. */
-  //   "SpeedRead_rpm",          /* String with name of task. */
-  //   10000,                    /* Stack size in bytes. */
-  //   NULL,                     /* Parameter passed as input of the task */
-  //   3,                        /* Priority of the task. */
-  //   &TaskHandle_SpeadRead );  /* Task handle. */
+  xTaskCreate(
+    taskSpeedRead_rpm,        /* Task function. */
+    "SpeedRead_rpm",          /* String with name of task. */
+    10000,                    /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    3,                        /* Priority of the task. */
+    &TaskHandle_SpeadRead );  /* Task handle. */
 
   xTaskCreate(
     taskPWMCalculator,        /* Task function. */
@@ -223,13 +223,21 @@ void setup() {
     2,                        /* Priority of the task. */
     NULL);                    /* Task handle. */
 
-  // xTaskCreate(
-  //   taskInput,                /* Task function. */
-  //   "TaskInput",              /* String with name of task. */
-  //   10000,                    /* Stack size in bytes. */
-  //   NULL,                     /* Prameter passed as input of the task */
-  //   3,                        /* Priority of the task. */
-  //   &TaskHandle_Input);       /* Task handle. */
+  xTaskCreate(
+    taskInput,                /* Task function. */
+    "TaskInput",              /* String with name of task. */
+    STACK_SIZE_INPUT,                    /* Stack size in bytes. */
+    NULL,                     /* Prameter passed as input of the task */
+    PRIORITY_TASK_INPUT,                        /* Priority of the task. */
+    &TaskHandle_Input);       /* Task handle. */
+
+  xTaskCreate(
+    taskPMNS_MAIN,                 /* Task function. */
+    "taskPMNS_MAIN",               /* String with name of task. */
+    STACK_SIZE_PMNS,                    /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    PRIORITY_TASK_PMNS,                        /* Priority of the task. */
+    &TaskHandle_PMNS);
 
   xTaskCreate(
     taksPause,                /* Task function. */
@@ -267,6 +275,7 @@ void taskInput( void * parameter )
   pinMode(switchPinWhite, INPUT_PULLUP);
   pinMode(switchPinBlack, INPUT_PULLUP);
 
+  vTaskSuspend(NULL);
   for ( ; ; ) {
     // push button action
     currentButtonStateGreen = digitalRead(switchPinGreen);
@@ -320,6 +329,7 @@ void taksPause( void * paramaeter)
 {
   pinMode(switchPinYellow, INPUT_PULLUP);
 
+  vTaskSuspend(NULL);
   for ( ; ; ) {
     // push button action
     currentButtonStateYellow = digitalRead(switchPinYellow);
@@ -368,15 +378,11 @@ void taskDisplay( void * parameter)
   for (;;) {
     switch (stateCondition) {
       case STATE_INIT: {
-          if (TaskCreateInput)
-            if (pdPASS == xTaskCreate(
-                  taskInput,                /* Task function. */
-                  "TaskInput",              /* String with name of task. */
-                  STACK_SIZE_INPUT,                    /* Stack size in bytes. */
-                  NULL,                     /* Prameter passed as input of the task */
-                  PRIORITY_TASK_INPUT,                        /* Priority of the task. */
-                  &TaskHandle_Input))       /* Task handle. */
-              TaskCreateInput = 0;
+          if (!IsRun_Input) //jika task input tidak jalan
+          {
+            vTaskResume(TaskHandle_Input);
+            IsRun_Input = 1;
+          }
 
           // vTaskSuspend(TaskHandle_Pause);
           // vTaskSuspend(TaskHandle_SpeadRead);
@@ -468,16 +474,10 @@ void taskDisplay( void * parameter)
           lcd.print("Memanaskan");
 
           //PERINTAH PANAS MASUK SINI
-          if (TaskCreatePMNS)
+          if (TaskRunPMNS)
           {
-            if (pdPASS == xTaskCreate(
-                  taskPMNS_MAIN,                 /* Task function. */
-                  "taskPMNS_MAIN",               /* String with name of task. */
-                  STACK_SIZE_PMNS,                    /* Stack size in bytes. */
-                  NULL,                     /* Parameter passed as input of the task */
-                  PRIORITY_TASK_PMNS,                        /* Priority of the task. */
-                  &TaskHandle_PMNS))                  /* Task handle. */
-              TaskCreatePMNS = 0;
+              TaskRunPMNS = 0;
+
             PMNS_pemanas_state = PMNS_STATE_START;
           }
 
@@ -583,13 +583,13 @@ void taskDisplay( void * parameter)
 
 void taskPWMCalculator(void *pvParameters)  // This is a task.
 {
-  (void) pvParameters;
 
   ledcSetup(MTR_pwmChannel, MTR_freq, MTR_resolution);
 
   // attach the channel to the GPIO to be controlled
   ledcAttachPin(pwm, MTR_pwmChannel);
 
+  vTaskSuspend(NULL);
   for (;;) {  // A Task shall never return or exit.
     // PID calculation
     if (MTR_speed_req == 0) {
@@ -621,9 +621,10 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   TickType_t xLastWakeTimeSpeedRead;
   const TickType_t xFrequency = 20;   // program will run every 20ms
 
+  vTaskSuspend(NULL);
+
   // Initialise the xLastWakeTime variable with the current time.
   xLastWakeTimeSpeedRead = xTaskGetTickCount();
-
   for (;;) {  // A Task shall never return or exit.
     vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
 
@@ -672,6 +673,7 @@ void taskPMNS_MAIN(void* v) {
 
   sensor.begin();
 
+  vTaskSuspend(NULL);
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
