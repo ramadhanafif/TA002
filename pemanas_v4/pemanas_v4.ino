@@ -2,14 +2,14 @@
 #include <DallasTemperature.h>
 
 //Definition
-#define TEMP_SENSOR_PIN 4
-#define SSR_PIN 2 
+#define TEMP_SENSOR_PIN 26
+#define SSR_PIN 23 
 
 #define BB 1
 
 #define PMNS_WAIT_TIME 40
 #define PMNS_ON_TIME 40
-#define PMNS_SET_POINT_DEBUG 90
+#define PMNS_SET_POINT_DEBUG 75
 
 #define PMNS_STATE_START 0
 #define PMNS_STATE_STEADY 1
@@ -52,7 +52,7 @@ void taskPMNS_MAIN(void* v) {
   
   unsigned int prev_TempRead;
   unsigned int temp_counter = 0;
-  unsigned int PMNS_ssr = 2;
+  unsigned int PMNS_ssr = PMNS_STATE_START;
   unsigned int PMNS_counter = 0;
 
   const int pwm_freq = 2;
