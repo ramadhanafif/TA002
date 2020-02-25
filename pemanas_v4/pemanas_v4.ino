@@ -14,7 +14,7 @@
 #define PMNS_STATE_START 0
 #define PMNS_STATE_STEADY 1
 
-#define PRINT_DONG 0
+#define PRINT_DONG
 
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature sensor(&oneWire);
@@ -22,6 +22,7 @@ DallasTemperature sensor(&oneWire);
 unsigned int PMNS_pemanas_state = 0;
 unsigned int PMNS_flag_pemanas_awal_done = 0;
 double TempRead = 0;
+float dutyCycle = 0;
 
 double get_temp(DallasTemperature sensor) {
   sensor.requestTemperatures();
@@ -37,6 +38,7 @@ void TaskPrint(void* v) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
     Serial.print(TempRead); Serial.print(" ");
     Serial.print(PMNS_pemanas_state); Serial.print(" ");
+    Serial.print(dutyCycle); Serial.print(" ");
     Serial.println();
   }
 }
@@ -61,7 +63,7 @@ void taskPMNS_MAIN(void* v) {
 
   ledcSetup(pwm_ledChannel, pwm_freq, pwm_resolution);
 
-  float dutyCycle = 0;
+  // float dutyCycle = 0;
 
   sensor.begin();
   //vTaskSuspend(NULL);
