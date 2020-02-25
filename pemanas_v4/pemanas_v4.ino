@@ -14,6 +14,8 @@
 #define PMNS_STATE_START 0
 #define PMNS_STATE_STEADY 1
 
+#define PRINT_DONG 0
+
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature sensor(&oneWire);
 
@@ -26,6 +28,7 @@ double get_temp(DallasTemperature sensor) {
   return sensor.getTempCByIndex(0);
 }
 
+#ifdef PRINT_DONG
 void TaskPrint(void* v) {
   Serial.begin(115200);
   TickType_t xLastWakeTime;
@@ -37,6 +40,8 @@ void TaskPrint(void* v) {
     Serial.println();
   }
 }
+#endif
+
 
 void taskPMNS_MAIN(void* v) {
   double setPoint = PMNS_SET_POINT_DEBUG;
@@ -59,7 +64,7 @@ void taskPMNS_MAIN(void* v) {
   float dutyCycle = 0;
 
   sensor.begin();
-
+  //vTaskSuspend(NULL);
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
