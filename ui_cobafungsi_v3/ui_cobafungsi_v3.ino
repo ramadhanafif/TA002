@@ -11,49 +11,64 @@
 /*---------------------------------------------------------------------*/
 /*--------------------------CONSTANTS & PINS----------------------------*/
 /*---------------------------------------------------------------------*/
-#define columnLength 20
-#define temConstant 25
-#define kecConstant 0
-#define jamConstant 0
-#define menConstant 0
+#define columnLength  20
+#define temConstant   25
+#define kecConstant    0
+#define jamConstant    0
+#define menConstant    0
 #define constantEncoderVal 28116000
-#define encoderPin1 19
-#define encoderPin2 18
-#define switchPinGreen 5
-#define switchPinYellow 17
-#define switchPinWhite 16
-#define switchPinBlack 4
-#define pwm 2
-#define encoderMotor 15
 
-/* MAIN State Definitions*/
-#define STATE_INIT -1
-#define STATE_INPUT_TEMP 0
-#define STATE_INPUT_RPM 1
-#define STATE_INPUT_JAM 2
-#define STATE_INPUT_MENIT 3
-#define STATE_WAIT_NEXT 4
-#define STATE_CONFIRM 5
+#define encoderPin1     19
+#define encoderPin2     18
+#define switchPinGreen   5
+#define switchPinYellow 17
+#define switchPinWhite  16
+#define switchPinBlack   4
+#define pwm              2
+#define encoderMotor    15
+
+/*MAIN State Definitions*/
+#define STATE_INIT         -1
+#define STATE_INPUT_TEMP    0
+#define STATE_INPUT_RPM     1
+#define STATE_INPUT_JAM     2
+#define STATE_INPUT_MENIT   3
+#define STATE_WAIT_NEXT     4
+#define STATE_CONFIRM       5
 #define STATE_START_PROCESS 6
-#define STATE_PANAS_AWAL 7
-#define STATE_START_ROT 8
-#define STATE_PAUSE 9
-#define STATE_DONE 10
+#define STATE_PANAS_AWAL    7
+#define STATE_START_ROT     8
+#define STATE_PAUSE         9
+#define STATE_DONE         10
 
 /* PEMANAS Definitions*/
-#define TEMP_SENSOR_PIN 25
-#define SSR_PIN 26
+#define TEMP_SENSOR_PIN   25
+#define SSR_PIN           26
 
 #define BB 1
 
-#define PMNS_WAIT_TIME 40
-#define PMNS_ON_TIME 40
-#define PMNS_PERIOD_PWM 400
-#define PMNS_SET_POINT_DEBUG 80
+#define PMNS_WAIT_TIME        40
+#define PMNS_ON_TIME          40
+#define PMNS_PERIOD_PWM       400
+#define PMNS_SET_POINT_DEBUG  80
 
-#define PMNS_STATE_START 0
+#define PMNS_STATE_START  0
 #define PMNS_STATE_STEADY 1
 
+#define STACK_SIZE_PMNS   2048
+#define STACK_SIZE_INPUT  1024
+#define STACK_SIZE_PAUSE  1024
+#define STACK_SIZE_PWMCalculator  1024
+#define STACK_SIZE_SPEEDREAD  1024
+
+#define PRIORITY_TASK_INPUT 3
+#define PRIORITY_TASK_PMNS  4
+#define PRIORITY_TASK_PAUSE 1
+#define PRIORITY_TASK_PWMCalculator  2
+#define PRIORITY_TASK_SPEEDREAD  3
+
+
+#define BUZZER_PIN 24
 /*---------------------------------------------------------------------*/
 /*------------------------------TIMER----------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -63,10 +78,23 @@ hw_timer_t * timer = NULL;
 /*---------------------------------------------------------------------*/
 /*---------------------------TASK HANDLER------------------------------*/
 /*---------------------------------------------------------------------*/
+//Task Definitions
+#define RUNNING 1
+#define RESUME 1
+#define SUSPEND 0
+#define SUSPENDED 0
+
 TaskHandle_t TaskHandle_Pause;
 TaskHandle_t TaskHandle_Input;
 TaskHandle_t TaskHandle_SpeadRead;
 TaskHandle_t TaskHandle_PMNS;
+TaskHandle_t TaskHandle_PWMCalculator;
+
+unsigned int IsRun_PMNS = RUNNING;
+unsigned int IsRun_SpeedRead_rpm = RUNNING;
+unsigned int IsRun_Input = RUNNING;
+unsigned int IsRun_Pause = RUNNING;
+unsigned int IsRun_PWMCalculator = RUNNING;
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -124,16 +152,13 @@ volatile double MTR_encoderMotorValue = 0;
 boolean forward = 1;
 boolean startProcess = 1;
 boolean pauseState = 0;
-boolean flagInputResume = 1;
-boolean flagSpeedReadResume = 1;
-boolean flagPWMCalcResume = 1;
 
 // PEMANAS
 unsigned int PMNS_pemanas_state = 0;
 unsigned int PMNS_flag_pemanas_awal_done = 0;
 double TempRead = 0;
 
-unsigned int createPMNS = 1;
+
 
 /*---------------------------------------------------------------------*/
 /*------------------------------OBJECTS--------------------------------*/
@@ -180,13 +205,13 @@ byte frame[4][8] = {
 /*---------------------------------------------------------------------*/
 void IRAM_ATTR onTimer() {
   if ((stateCondition == STATE_START_ROT) && (durasi != timerCounter)) {
-    timerCounter++;
     Serial.println(timerCounter);
   } else if ((stateCondition == STATE_START_ROT) && (durasi == timerCounter)) {
     // Serial.println("Timer Done");
     stateCondition = STATE_DONE;
-    timerCounter++;
+    digitalWrite(BUZZER_PIN, HIGH);
   }
+  timerCounter++;
 }
 
 
@@ -197,6 +222,7 @@ void setup() {
   Serial.begin (112500);
 
   // timer
+  pinMode(BUZZER_PIN, OUTPUT);
   timer = timerBegin(0, 80000, true);
   timerAttachInterrupt(timer, &onTimer, true);
   timerAlarmWrite(timer, 1000, true);
@@ -204,47 +230,47 @@ void setup() {
   xTaskCreate(
     taskSpeedRead_rpm,        /* Task function. */
     "SpeedRead_rpm",          /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
+    STACK_SIZE_SPEEDREAD,                    /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
-    3,                        /* Priority of the task. */
+    PRIORITY_TASK_SPEEDREAD,                        /* Priority of the task. */
     &TaskHandle_SpeadRead );  /* Task handle. */
 
   xTaskCreate(
     taskPWMCalculator,        /* Task function. */
     "PWMCalculator",          /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
+    STACK_SIZE_PWMCalculator,                    /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
-    2,                        /* Priority of the task. */
-    NULL);                    /* Task handle. */
-
-  // xTaskCreate(
-  //   taskInput,                /* Task function. */
-  //   "TaskInput",              /* String with name of task. */
-  //   10000,                    /* Stack size in bytes. */
-  //   NULL,                     /* Prameter passed as input of the task */
-  //   3,                        /* Priority of the task. */
-  //   &TaskHandle_Input);       /* Task handle. */
-
-  // xTaskCreate(
-  //   taskPMNS_MAIN,                 /* Task function. */
-  //   "taskPMNS_MAIN",               /* String with name of task. */
-  //   10000,                    /* Stack size in bytes. */
-  //   NULL,                     /* Parameter passed as input of the task */
-  //   4,                        /* Priority of the task. */
-  //   &TaskHandle_PMNS);                    /* Task handle. */
+    PRIORITY_TASK_PWMCalculator,                        /* Priority of the task. */
+    &TaskHandle_PWMCalculator);                    /* Task handle. */
 
   xTaskCreate(
-    taksPause,                /* Task function. */
-    "TaskPause",              /* String with name of task. */
-    10000,                    /* Stack size in bytes. */
+    taskInput,                /* Task function. */
+    "TaskInput",              /* String with name of task. */
+    STACK_SIZE_INPUT,                    /* Stack size in bytes. */
+    NULL,                     /* Prameter passed as input of the task */
+    PRIORITY_TASK_INPUT,                        /* Priority of the task. */
+    &TaskHandle_Input);       /* Task handle. */
+
+  xTaskCreate(
+    taskPMNS_MAIN,                 /* Task function. */
+    "taskPMNS_MAIN",               /* String with name of task. */
+    STACK_SIZE_PMNS,                    /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
-    1,                        /* Priority of the task. */
+    PRIORITY_TASK_PMNS,                        /* Priority of the task. */
+    &TaskHandle_PMNS);
+
+  xTaskCreate(
+    taskPause,                /* Task function. */
+    "TaskPause",              /* String with name of task. */
+    STACK_SIZE_PAUSE,         /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    PRIORITY_TASK_PAUSE,                        /* Priority of the task. */
     &TaskHandle_Pause);       /* Task handle. */
 
   taskDisplay(NULL);
-  vTaskSuspend(TaskHandle_SpeadRead);
+  // vTaskControl(TaskHandle_SpeadRead,&IsRun_SpeedRead_rpm,SUSPEND);
   // vTaskSuspend(TaskHandle_Input);
-  vTaskSuspend(TaskHandle_Pause);
+  // vTaskSuspend(TaskHandle_Pause);
   // vTaskSuspend(TaskHandle_PMNS);
 }
 
@@ -269,8 +295,7 @@ void taskInput( void * parameter )
   pinMode(switchPinWhite, INPUT_PULLUP);
   pinMode(switchPinBlack, INPUT_PULLUP);
 
-  vTaskSuspend(NULL);
-
+  vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
   for ( ; ; ) {
     // push button action
     currentButtonStateGreen = digitalRead(switchPinGreen);
@@ -320,10 +345,11 @@ void taskInput( void * parameter )
   }
 }
 
-void taksPause( void * paramaeter)
+void taskPause( void * paramaeter)
 {
   pinMode(switchPinYellow, INPUT_PULLUP);
 
+  vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
   for ( ; ; ) {
     // push button action
     currentButtonStateYellow = digitalRead(switchPinYellow);
@@ -362,38 +388,22 @@ void taskDisplay( void * parameter)
   lcd.createChar(3, loadingBar[2]);   // loading bar |||
   lcd.createChar(4, loadingBar[3]);   // loading bar ||||
   lcd.createChar(5, loadingBar[4]);   // loading bar |||||
-  // max 8 custom char
-  // lcd.createChar(6, frame[0]);        // frame right
-  // lcd.createChar(7, frame[1]);        // frame bottom
-  // lcd.createChar(8, frame[2]);        // frame left
-  // lcd.createChar(9, frame[3]);        // frame top
+  lcd.createChar(6, frame[0]);        // frame right
+  lcd.createChar(7, frame[1]);        // frame bottom
+  lcd.createChar(8, frame[2]);        // frame left
+  lcd.createChar(9, frame[3]);        // frame top
 
   unsigned int value = 0; //ini value apa
 
   for (;;) {
     switch (stateCondition) {
       case STATE_INIT: {
-        if (flagInputResume) {
-          xTaskCreate(
-            taskInput,                /* Task function. */
-            "TaskInput",              /* String with name of task. */
-            10000,                    /* Stack size in bytes. */
-            NULL,                     /* Prameter passed as input of the task */
-            3,                        /* Priority of the task. */
-            &TaskHandle_Input);       /* Task handle. */
-            flagInputResume = 0;
-        }
-        
-          vTaskResume(TaskHandle_Input);
-          vTaskSuspend(TaskHandle_Pause);
-          vTaskSuspend(TaskHandle_SpeadRead);
+          vTaskControl(TaskHandle_Input, &IsRun_Input, RESUME);
           MTR_speed_req = 0;
           lcd.clear();
           stateCondition++;
         } break;
       case STATE_INPUT_TEMP: {
-          vTaskResume(TaskHandle_Input);
-          vTaskSuspend(TaskHandle_Pause);
           temperatur = ((encoderValue / 4) % 66) + 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
         } break;
@@ -453,19 +463,19 @@ void taskDisplay( void * parameter)
           }
         } break;
       case STATE_PANAS_AWAL: {
-          // // print frame for loading bar
-          // lcd.setCursor(0, 1);
-          // for (int i = 0; i < 20; i++) {
-          //   lcd.write(byte(7));
-          // }
-          // lcd.setCursor(0, 2);
-          // lcd.write(byte(6));
-          // lcd.setCursor(19, 2);
-          // lcd.write(byte(8));
-          // lcd.setCursor(0, 3);
-          // for (int i = 0; i < 20; i++) {
-          //   lcd.write(byte(9));
-          // }
+          // print frame for loading bar
+          lcd.setCursor(0, 1);
+          for (int i = 0; i < 20; i++) {
+            lcd.write(byte(7));
+          }
+          lcd.setCursor(0, 2);
+          lcd.write(byte(6));
+          lcd.setCursor(19, 2);
+          lcd.write(byte(8));
+          lcd.setCursor(0, 3);
+          for (int i = 0; i < 20; i++) {
+            lcd.write(byte(9));
+          }
 
           // local variable
           unsigned int piece;
@@ -475,19 +485,9 @@ void taskDisplay( void * parameter)
           lcd.print("Memanaskan");
 
           //PERINTAH PANAS MASUK SINI
-          if(createPMNS)
-          {
-            xTaskCreate(
-              taskPMNS_MAIN,                 /* Task function. */
-              "taskPMNS_MAIN",               /* String with name of task. */
-              10000,                    /* Stack size in bytes. */
-              NULL,                     /* Parameter passed as input of the task */
-              4,                        /* Priority of the task. */
-              &TaskHandle_PMNS);                    /* Task handle. */
-              createPMNS = 0;
-          }
+          vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
           PMNS_pemanas_state = PMNS_STATE_START;
-          
+
           if (PMNS_flag_pemanas_awal_done) {
             stateCondition = STATE_START_ROT;
             PMNS_pemanas_state = PMNS_STATE_STEADY;
@@ -552,25 +552,24 @@ void taskDisplay( void * parameter)
           // Serial.print(" ");
           // Serial.println(menit);
           lcd.clear();
-          vTaskResume(TaskHandle_SpeadRead);
+
+          vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
           durasi = jam * 3600 + menit * 60;
+
           timerAlarmEnable(timer);
           MTR_speed_req = kecepatan;
-          // vTaskResume(TaskHandle_Timer);
-          vTaskResume(TaskHandle_Pause);
-          vTaskSuspend(TaskHandle_Input);
+          vTaskControl(TaskHandle_Pause, &IsRun_Pause, RESUME);
+          vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
         } break;
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
-          // vTaskSuspend(TaskHandle_Timer);
-          vTaskSuspend(TaskHandle_SpeadRead);
+          vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
           // Serial.println("Timer Pause");
         } break;
       case STATE_DONE: { // timer done
           MTR_speed_req = 0;
-          // vTaskSuspend(TaskHandle_Timer);
-          vTaskSuspend(TaskHandle_SpeadRead);
-          vTaskSuspend(TaskHandle_Pause);
+          vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
+          vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
           // Serial.println("Timer Done");
         } break;
     }
@@ -582,13 +581,13 @@ void taskDisplay( void * parameter)
 
 void taskPWMCalculator(void *pvParameters)  // This is a task.
 {
-  (void) pvParameters;
 
   ledcSetup(MTR_pwmChannel, MTR_freq, MTR_resolution);
 
   // attach the channel to the GPIO to be controlled
   ledcAttachPin(pwm, MTR_pwmChannel);
 
+  vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, SUSPEND);
   for (;;) {  // A Task shall never return or exit.
     // PID calculation
     if (MTR_speed_req == 0) {
@@ -620,9 +619,11 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   TickType_t xLastWakeTimeSpeedRead;
   const TickType_t xFrequency = 20;   // program will run every 20ms
 
+  vTaskControl(NULL, &IsRun_SpeedRead_rpm, SUSPEND);
+
+
   // Initialise the xLastWakeTime variable with the current time.
   xLastWakeTimeSpeedRead = xTaskGetTickCount();
-
   for (;;) {  // A Task shall never return or exit.
     vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
 
@@ -671,6 +672,7 @@ void taskPMNS_MAIN(void* v) {
 
   sensor.begin();
 
+  vTaskControl(NULL, &IsRun_PMNS, SUSPEND);
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
@@ -899,4 +901,27 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   *previousTime = currentTime;                        //remember current time
 
   return out;                                         //have function return the PID output
+}
+
+void vTaskControl(TaskHandle_t xHandle, unsigned int* statusVar, unsigned int command) {
+  if (*statusVar == RUNNING) {
+    if (command == RESUME) {
+      //do nothing
+      *statusVar = RUNNING;
+    }
+    else if (command == SUSPEND) {
+      *statusVar = SUSPENDED;
+      vTaskSuspend(xHandle);
+    }
+  }
+  else if (*statusVar == SUSPENDED) {
+    if (command == RESUME) {
+      *statusVar = RUNNING;
+      vTaskResume(xHandle);
+    }
+    else if (command == SUSPEND) {
+      //do nothing
+      *statusVar = SUSPENDED;
+    }
+  }
 }
