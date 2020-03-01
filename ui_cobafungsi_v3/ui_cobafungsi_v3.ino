@@ -225,9 +225,9 @@ void setup() {
 
   // timer
   pinMode(BUZZER_PIN, OUTPUT);
-  timer = timerBegin(0, 80000, true);
+  timer = timerBegin(0, 80, true);
   timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, 1000, true);
+  timerAlarmWrite(timer, 1000000, true);
 
   xTaskCreate(
     taskSpeedRead_rpm,        /* Task function. */
@@ -605,7 +605,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       ledcWrite(MTR_pwmChannel, 0);
     } else {
       MTR_error = MTR_speed_req - MTR_speed_actual;
-      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + MTR_sum_error * MTR_Ki + 185;
+      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + MTR_sum_error * MTR_Ki + 195;
       MTR_last_error = MTR_error;
       MTR_sum_error += MTR_error;
       MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
@@ -717,7 +717,7 @@ void taskPMNS_MAIN(void* v) {
           if (abs(TempRead - setPoint) <= 2.5) {
             temp_counter++;
           }
-          if (temp_counter >= 60) {
+          if (temp_counter >= 2) {
             PMNS_flag_pemanas_awal_done = 1;
           }
           break;
