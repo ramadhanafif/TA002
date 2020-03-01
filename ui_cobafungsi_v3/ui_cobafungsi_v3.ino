@@ -44,7 +44,7 @@
 #define STATE_DONE         10
 
 /* PEMANAS Definitions*/
-#define TEMP_SENSOR_PIN   25
+#define TEMP_SENSOR_PIN   23
 #define SSR_PIN           26
 
 #define BB 1
@@ -80,23 +80,23 @@ TaskHandle_t TaskHandle_SpeadRead;
 TaskHandle_t TaskHandle_PMNS;
 TaskHandle_t TaskHandle_PWMCalculator;
 
-unsigned int IsRun_PMNS = RUNNING;
-unsigned int IsRun_SpeedRead_rpm = RUNNING;
-unsigned int IsRun_Input = RUNNING;
-unsigned int IsRun_Pause = RUNNING;
-unsigned int IsRun_PWMCalculator = RUNNING;
+bool IsRun_PMNS = RUNNING;
+bool IsRun_SpeedRead_rpm = RUNNING;
+bool IsRun_Input = RUNNING;
+bool IsRun_Pause = RUNNING;
+bool IsRun_PWMCalculator = RUNNING;
 
-#define STACK_SIZE_PMNS   2048
-#define STACK_SIZE_INPUT  1024
-#define STACK_SIZE_PAUSE  1024
+#define STACK_SIZE_PAUSE          1024
 #define STACK_SIZE_PWMCalculator  1024
-#define STACK_SIZE_SPEEDREAD  1024
+#define STACK_SIZE_INPUT          1024
+#define STACK_SIZE_SPEEDREAD      1024
+#define STACK_SIZE_PMNS           2048
 
-#define PRIORITY_TASK_INPUT 3
-#define PRIORITY_TASK_PMNS  4
-#define PRIORITY_TASK_PAUSE 1
-#define PRIORITY_TASK_PWMCalculator  2
-#define PRIORITY_TASK_SPEEDREAD  3
+#define PRIORITY_TASK_PAUSE           1
+#define PRIORITY_TASK_PWMCalculator   2
+#define PRIORITY_TASK_INPUT           3
+#define PRIORITY_TASK_SPEEDREAD       3
+#define PRIORITY_TASK_PMNS            4
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -408,6 +408,7 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_TEMP: {
           temperatur = ((encoderValue / 4) % 66) + 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+          Serial.print(temperatur);
         } break;
       case STATE_INPUT_RPM: {
           kecepatan = (encoderValue / 4) % 71 + 10;
@@ -490,7 +491,7 @@ void taskDisplay( void * parameter)
           vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
           PMNS_pemanas_state = PMNS_STATE_START;
 
-          if (PMNS_flag_pemanas_awal_done) {
+          if (PMNS_flag_pemanas_awal_done == 1) {
             stateCondition = STATE_START_ROT;
             PMNS_pemanas_state = PMNS_STATE_STEADY;
             percent = 100;
@@ -507,8 +508,11 @@ void taskDisplay( void * parameter)
           // }
 
           // percent = value;
-          percent = (TempRead - 25) * 100 / (temperatur - 25);
+          percent = (double)(TempRead - 25) * 100 / (temperatur - 25);
           double position = ((columnLength - 2) / 100 * percent);
+
+          Serial.print(TempRead); Serial.print(" ");
+          Serial.println(percent);
 
           lcd.setCursor((position + 1), 2);
           piece = (int)(position * 5) % 5;
@@ -556,6 +560,7 @@ void taskDisplay( void * parameter)
           lcd.clear();
 
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
+          vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
           durasi = jam * 3600 + menit * 60;
 
           timerAlarmEnable(timer);
@@ -565,7 +570,10 @@ void taskDisplay( void * parameter)
         } break;
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
-          vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
+          // delay(100);
+          // vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
+          // vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, SUSPEND);
+
           // Serial.println("Timer Pause");
         } break;
       case STATE_DONE: { // timer done
@@ -653,7 +661,6 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 }
 
 void taskPMNS_MAIN(void* v) {
-  double setPoint = PMNS_SET_POINT_DEBUG;
   double prevtime = millis();
   double cumerror = 0;
 
@@ -675,6 +682,9 @@ void taskPMNS_MAIN(void* v) {
   pinMode(SSR_PIN, OUTPUT);
   sensor.begin();
 
+  vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, SUSPEND);
+
+  double setPoint = temperatur;
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
@@ -906,7 +916,7 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   return out;                                         //have function return the PID output
 }
 
-void vTaskControl(TaskHandle_t xHandle, unsigned int* statusVar, unsigned int command) {
+void vTaskControl(TaskHandle_t xHandle, bool* statusVar, unsigned int command) {
   if (*statusVar == RUNNING) {
     if (command == RESUME) {
       //do nothing

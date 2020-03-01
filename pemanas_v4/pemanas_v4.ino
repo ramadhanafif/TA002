@@ -32,7 +32,7 @@ double get_temp(DallasTemperature sensor) {
   sensor.requestTemperatures();
   return medianFilter.AddValue(sensor.getTempCByIndex(0));
 }
-void TaskPrint(void* v) {
+void TaskPrintPemanas(void* v) {
   Serial.begin(115200);
   TickType_t xLastWakeTime;
   xLastWakeTime = xTaskGetTickCount();
@@ -157,7 +157,7 @@ void setup() {
   );
 
   xTaskCreate(
-    TaskPrint,
+    TaskPrintPemanas,
     "Task2",
     1024,
     NULL,
