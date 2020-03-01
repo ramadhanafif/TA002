@@ -5,8 +5,11 @@
 #include "LiquidCrystal_I2C.h"    // include library LCD I2C
 #include "SimpleKalmanFilter.h"   // include library Kalman Filter
 
+//Dibawah ini library untuk pemanas
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "MedianFilterLib.h"
+
 
 /*---------------------------------------------------------------------*/
 /*--------------------------CONSTANTS & PINS----------------------------*/
@@ -55,18 +58,6 @@
 #define PMNS_STATE_START  0
 #define PMNS_STATE_STEADY 1
 
-#define STACK_SIZE_PMNS   2048
-#define STACK_SIZE_INPUT  1024
-#define STACK_SIZE_PAUSE  1024
-#define STACK_SIZE_PWMCalculator  1024
-#define STACK_SIZE_SPEEDREAD  1024
-
-#define PRIORITY_TASK_INPUT 3
-#define PRIORITY_TASK_PMNS  4
-#define PRIORITY_TASK_PAUSE 1
-#define PRIORITY_TASK_PWMCalculator  2
-#define PRIORITY_TASK_SPEEDREAD  3
-
 
 #define BUZZER_PIN 24
 /*---------------------------------------------------------------------*/
@@ -95,6 +86,18 @@ unsigned int IsRun_SpeedRead_rpm = RUNNING;
 unsigned int IsRun_Input = RUNNING;
 unsigned int IsRun_Pause = RUNNING;
 unsigned int IsRun_PWMCalculator = RUNNING;
+
+#define STACK_SIZE_PMNS   2048
+#define STACK_SIZE_INPUT  1024
+#define STACK_SIZE_PAUSE  1024
+#define STACK_SIZE_PWMCalculator  1024
+#define STACK_SIZE_SPEEDREAD  1024
+
+#define PRIORITY_TASK_INPUT 3
+#define PRIORITY_TASK_PMNS  4
+#define PRIORITY_TASK_PAUSE 1
+#define PRIORITY_TASK_PWMCalculator  2
+#define PRIORITY_TASK_SPEEDREAD  3
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -672,6 +675,7 @@ void taskPMNS_MAIN(void* v) {
 
   sensor.begin();
 
+  vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, SUSPEND);
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
