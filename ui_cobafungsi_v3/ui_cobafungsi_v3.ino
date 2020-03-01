@@ -10,7 +10,6 @@
 #include <DallasTemperature.h>
 #include "MedianFilterLib.h"
 
-
 /*---------------------------------------------------------------------*/
 /*--------------------------CONSTANTS & PINS----------------------------*/
 /*---------------------------------------------------------------------*/
@@ -657,15 +656,15 @@ void taskPMNS_MAIN(void* v) {
   double setPoint = PMNS_SET_POINT_DEBUG;
   double prevtime = millis();
   double cumerror = 0;
-  
-  unsigned int prev_TempRead;
+
+  //  unsigned int prev_TempRead;
   unsigned int temp_counter = 0;
   unsigned int PMNS_ssr = 2;
   unsigned int PMNS_counter = 0;
 
   const int pwm_freq = 2;
   const int pwm_ledChannel = 2;
-  const int pwm_resolution = 15;
+  const int pwm_resolution = 16;
 
   unsigned int pwm_attach = 0;
 
@@ -673,9 +672,9 @@ void taskPMNS_MAIN(void* v) {
 
   float dutyCycle = 0;
 
+  pinMode(SSR_PIN, OUTPUT);
   sensor.begin();
 
-  vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, SUSPEND);
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
@@ -686,7 +685,7 @@ void taskPMNS_MAIN(void* v) {
           //PID calculation
           double output = PMNS_computePID(TempRead, setPoint, &prevtime, &cumerror);
 
-          //Normalization PID to dutyCycle (0 - 4095)
+          //Normalization PID to dutyCycle (0 - 0xFFFF)
           dutyCycle = output / 500.0;
           if (dutyCycle > 1.0)
             dutyCycle = 1;
@@ -701,8 +700,8 @@ void taskPMNS_MAIN(void* v) {
             pwm_attach = 1;
           }
 
-          //PWM update dutyCycle 
-          ledcWrite(pwm_ledChannel,dutyCycle);
+          //PWM update dutyCycle
+          ledcWrite(pwm_ledChannel, dutyCycle);
 
           //Check for temperature steadiness
           if (abs(TempRead - setPoint) <= 2.5) {
@@ -715,34 +714,31 @@ void taskPMNS_MAIN(void* v) {
         }
       case PMNS_STATE_STEADY: //On Off
         {
-          //Stop PWM
-          if (pwm_attach){
+          //Stop PWM, switch to bang-bang
+          if (pwm_attach) {
             ledcDetachPin(SSR_PIN);
             pwm_attach = 0;
-            pinMode(SSR_PIN, OUTPUT);
           }
 
           switch (PMNS_ssr)
           {
             case 0: //nunggu sampe turun dari kelebihan suhu
-              digitalWrite(SSR_PIN, 0);
+              digitalWrite(SSR_PIN, LOW);
               if (TempRead <= setPoint - BB) {
-                if (abs(prev_TempRead - TempRead) < 2) {
-                  PMNS_ssr = 1; //change state
-                  PMNS_counter = PMNS_ON_TIME;
-                }
+                PMNS_ssr = 1; //change state
+                PMNS_counter = PMNS_ON_TIME;
               }
               break;
             case 1: //decrement from PMNS_ON_TIME until 0
-              digitalWrite(SSR_PIN, PMNS_ssr);
+              digitalWrite(SSR_PIN, HIGH);
               PMNS_counter--;
               if (PMNS_counter == 0)
               {
                 PMNS_ssr = 2;
               }
               break;
-            case 2: //nunggu TIME_ON s
-              digitalWrite(SSR_PIN, 0);
+            case 2: //nunggu selama WAIT TIME
+              digitalWrite(SSR_PIN, LOW);
               PMNS_counter++;
               if (PMNS_counter == PMNS_WAIT_TIME)
               {
@@ -750,8 +746,6 @@ void taskPMNS_MAIN(void* v) {
               }
               break;
           }
-          prev_TempRead = TempRead;
-
           break; //break state 1
         }
     }
@@ -881,8 +875,14 @@ void updateEncoder() {
 }
 
 double get_temp(DallasTemperature sensor) {
+  MedianFilter<double> medianFilter(3);
+  for (int x = 0 ; x < 2 ; x++) {
+    sensor.requestTemperatures();
+    medianFilter.AddValue(sensor.getTempCByIndex(0));
+  }
+
   sensor.requestTemperatures();
-  return sensor.getTempCByIndex(0);
+  return medianFilter.AddValue(sensor.getTempCByIndex(0));
 }
 
 double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, double* cumError) {
@@ -914,13 +914,13 @@ void vTaskControl(TaskHandle_t xHandle, unsigned int* statusVar, unsigned int co
     }
     else if (command == SUSPEND) {
       *statusVar = SUSPENDED;
-      vTaskSuspend(xHandle);
+      return vTaskSuspend(xHandle);
     }
   }
   else if (*statusVar == SUSPENDED) {
     if (command == RESUME) {
       *statusVar = RUNNING;
-      vTaskResume(xHandle);
+      return vTaskResume(xHandle);
     }
     else if (command == SUSPEND) {
       //do nothing
