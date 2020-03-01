@@ -654,7 +654,7 @@ void taskPMNS_MAIN(void* v) {
   double setPoint = PMNS_SET_POINT_DEBUG;
   double prevtime = millis();
   double cumerror = 0;
-
+  
   unsigned int prev_TempRead;
   unsigned int temp_counter = 0;
   unsigned int PMNS_ssr = 2;
@@ -672,7 +672,6 @@ void taskPMNS_MAIN(void* v) {
 
   sensor.begin();
 
-  vTaskControl(NULL, &IsRun_PMNS, SUSPEND);
   TickType_t xLastWakeTime = xTaskGetTickCount();
   for (;;) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
@@ -689,7 +688,7 @@ void taskPMNS_MAIN(void* v) {
             dutyCycle = 1;
           else if (dutyCycle < 0.0)
             dutyCycle = 0;
-          dutyCycle *= 4095;
+          dutyCycle *= 0xFFFF;
 
           //PWM pin initialization
           if (!pwm_attach)
@@ -698,8 +697,8 @@ void taskPMNS_MAIN(void* v) {
             pwm_attach = 1;
           }
 
-          //PWM update dutyCycle
-          ledcWrite(pwm_ledChannel, dutyCycle);
+          //PWM update dutyCycle 
+          ledcWrite(pwm_ledChannel,dutyCycle);
 
           //Check for temperature steadiness
           if (abs(TempRead - setPoint) <= 2.5) {
@@ -713,7 +712,7 @@ void taskPMNS_MAIN(void* v) {
       case PMNS_STATE_STEADY: //On Off
         {
           //Stop PWM
-          if (pwm_attach) {
+          if (pwm_attach){
             ledcDetachPin(SSR_PIN);
             pwm_attach = 0;
             pinMode(SSR_PIN, OUTPUT);
