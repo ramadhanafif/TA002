@@ -52,7 +52,7 @@
 #define BB 1
 
 #define PMNS_WAIT_TIME        40
-#define PMNS_ON_TIME          40
+#define PMNS_ON_TIME          30
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
@@ -92,7 +92,7 @@ bool IsRun_PWMCalculator = RUNNING;
 #define STACK_SIZE_PWMCalculator  1024
 #define STACK_SIZE_INPUT          1024
 #define STACK_SIZE_SPEEDREAD      1024
-#define STACK_SIZE_PMNS           2048
+#define STACK_SIZE_PMNS           5000
 
 #define PRIORITY_TASK_PAUSE           1
 #define PRIORITY_TASK_PWMCalculator   2
@@ -773,19 +773,19 @@ void taskPMNS_MAIN(void* v) {
 }
 
 #if ENABLE_PRINT_DEBUG
-void taskPrint(void* v){
-  for(;;){
+void taskPrint(void* v) {
+  Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
+  for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    Serial.print(stateCondition);Serial.print(";");
-    Serial.print(temperatur);Serial.print(";");
-    Serial.print(TempRead);Serial.print(";");
-    Serial.print(kecepatan);Serial.print(";");
-    Serial.print(MTR_speed_actual);Serial.print(";");
-    Serial.print(durasi);Serial.print(";");
-    Serial.print(timerCounter);Serial.print(";");
-
+    Serial.print(stateCondition); Serial.print(",");
+    Serial.print(temperatur); Serial.print(",");
+    Serial.print(TempRead); Serial.print(",");
+    Serial.print(kecepatan); Serial.print(",");
+    Serial.print(MTR_speed_actual); Serial.print(",");
+    Serial.print(durasi); Serial.print(",");
+    Serial.print(timerCounter); Serial.print("");
     Serial.println();
-    vTaskDelay(1500);
+    vTaskDelay(2000);
   }
 }
 #endif
@@ -913,8 +913,8 @@ void updateEncoder() {
   lastEncoded = encoded; //store this value for next time
 }
 
+MedianFilter<double> medianFilter(3);
 double get_temp(DallasTemperature sensor) {
-  MedianFilter<double> medianFilter(3);
   for (int x = 0 ; x < 2 ; x++) {
     sensor.requestTemperatures();
     medianFilter.AddValue(sensor.getTempCByIndex(0));
