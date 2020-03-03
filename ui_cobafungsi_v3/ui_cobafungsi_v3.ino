@@ -49,7 +49,7 @@
 #define TEMP_SENSOR_PIN   23
 #define SSR_PIN           26
 
-#define BB 1
+#define BB -1
 
 #define PMNS_WAIT_TIME        40
 #define PMNS_ON_TIME          30
