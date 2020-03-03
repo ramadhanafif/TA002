@@ -66,7 +66,7 @@ File myFile;
 #define PMNS_STATE_STEADY 1
 
 
-#define BUZZER_PIN 24
+#define BUZZER_PIN 33
 
 MedianFilter<double> medianFilter(3);
 /*---------------------------------------------------------------------*/
@@ -219,7 +219,6 @@ void IRAM_ATTR onTimer() {
   } else if ((stateCondition == STATE_START_ROT) && (durasi == timerCounter)) {
     // Serial.println("Timer Done");
     stateCondition = STATE_DONE;
-    digitalWrite(BUZZER_PIN, HIGH);
   }
   timerCounter++;
 }
@@ -567,14 +566,7 @@ void taskDisplay( void * parameter)
               break;
           }
         } break;
-      case STATE_START_ROT: {  // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
-          // Serial.print(temperatur);
-          // Serial.print(" ");
-          // Serial.print(kecepatan);
-          // Serial.print(" ");
-          // Serial.print(jam);
-          // Serial.print(" ");
-          // Serial.println(menit);
+      case STATE_START_ROT: {
           lcd.clear();
 
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
@@ -588,24 +580,27 @@ void taskDisplay( void * parameter)
         } break;
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
-          // delay(100);
-          // vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
-          // vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, SUSPEND);
-
-          // Serial.println("Timer Pause");
         } break;
       case STATE_DONE: { // timer done
           MTR_speed_req = 0;
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
           vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
+          if ((timerCounter - durasi) % 10 == 0)
+          {
+            for (int m = 0; m < 3; m++) {
+              digitalWrite(BUZZER_PIN, HIGH);
+              vTaskDelay(100);
+              digitalWrite(BUZZER_PIN, LOW);
+              vTaskDelay(50);
+            }
+          }
+#if ENABLE_PRINT_DEBUG
           vTaskDelay(1000);
           if (myFile)
             myFile.close();
-          // Serial.println("Timer Done");
+#endif
         } break;
     }
-    // Serial.println("Task Display");
-    // Serial.println(stateCondition);
     vTaskDelay(100);
   }
 }
