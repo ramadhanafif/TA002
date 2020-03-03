@@ -134,10 +134,8 @@ void TaskSwitch(void* v) {
 }
 
 void TaskTimer(void* v) {
-  if (xSemaphoreTake(xTimer, (TickType_t) portMAX_DELAY) == pdTRUE) {
-    Serial.println("TaskTimer started");
-    pinMode(BUZZER, OUTPUT);
-    analogWrite(BUZZER, 0);
+  // if (xSemaphoreTake(xTimer, (TickType_t) portMAX_DELAY) == pdTRUE) {
+  //   Serial.println("TaskTimer started");
     unsigned int counter = 0;
     unsigned int durasi = jam * 3600 + menit * 60;
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -148,7 +146,7 @@ void TaskTimer(void* v) {
       }
       vTaskDelayUntil( &xLastWakeTime, 1000);
     }
-  }
+  // }
 }
 
 void TaskUI(void* v) {

@@ -80,6 +80,9 @@ void TaskCompute(void* v) {
 
 void TaskPWM(void* pv) {
   for (;;) {
+    digitalWrite(SW, ssr);
+    vTaskDelay(50);
+    digitalWrite(SW, ssr);
     vTaskDelay(50);
   }
 }
