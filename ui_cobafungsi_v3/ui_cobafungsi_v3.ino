@@ -1,3 +1,5 @@
+#define ENABLE_PRINT_DEBUG 1
+
 /*---------------------------------------------------------------------*/
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -160,8 +162,6 @@ unsigned int PMNS_pemanas_state = 0;
 unsigned int PMNS_flag_pemanas_awal_done = 0;
 double TempRead = 0;
 
-
-
 /*---------------------------------------------------------------------*/
 /*------------------------------OBJECTS--------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -207,7 +207,7 @@ byte frame[4][8] = {
 /*---------------------------------------------------------------------*/
 void IRAM_ATTR onTimer() {
   if ((stateCondition == STATE_START_ROT) && (durasi != timerCounter)) {
-    Serial.println(timerCounter);
+    // Serial.println(timerCounter);
   } else if ((stateCondition == STATE_START_ROT) && (durasi == timerCounter)) {
     // Serial.println("Timer Done");
     stateCondition = STATE_DONE;
@@ -236,6 +236,16 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_SPEEDREAD,                        /* Priority of the task. */
     &TaskHandle_SpeadRead );  /* Task handle. */
+
+#if ENABLE_PRINT_DEBUG
+  xTaskCreate(
+    taskPrint,        /* Task function. */
+    "printing",          /* String with name of task. */
+    1024,                    /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    1,                        /* Priority of the task. */
+    NULL );  /* Task handle. */
+#endif
 
   xTaskCreate(
     taskPWMCalculator,        /* Task function. */
@@ -408,7 +418,7 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_TEMP: {
           temperatur = ((encoderValue / 4) % 66) + 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          Serial.print(temperatur);
+          // Serial.print(temperatur);
         } break;
       case STATE_INPUT_RPM: {
           kecepatan = (encoderValue / 4) % 71 + 10;
@@ -511,8 +521,8 @@ void taskDisplay( void * parameter)
           percent = (double)(TempRead - 25) * 100 / (temperatur - 25);
           double position = ((columnLength - 2) / 100 * percent);
 
-          Serial.print(TempRead); Serial.print(" ");
-          Serial.println(percent);
+          // Serial.print(TempRead); Serial.print(" ");
+          // Serial.println(percent);
 
           lcd.setCursor((position + 1), 2);
           piece = (int)(position * 5) % 5;
@@ -584,7 +594,7 @@ void taskDisplay( void * parameter)
         } break;
     }
     // Serial.println("Task Display");
-    Serial.println(stateCondition);
+    // Serial.println(stateCondition);
     vTaskDelay(100);
   }
 }
@@ -762,6 +772,23 @@ void taskPMNS_MAIN(void* v) {
   }
 }
 
+#if ENABLE_PRINT_DEBUG
+void taskPrint(void* v){
+  for(;;){
+    //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
+    Serial.print(stateCondition);Serial.print(";");
+    Serial.print(temperatur);Serial.print(";");
+    Serial.print(TempRead);Serial.print(";");
+    Serial.print(kecepatan);Serial.print(";");
+    Serial.print(MTR_speed_actual);Serial.print(";");
+    Serial.print(durasi);Serial.print(";");
+    Serial.print(timerCounter);Serial.print(";");
+
+    Serial.println();
+    vTaskDelay(1500);
+  }
+}
+#endif
 /*---------------------------------------------------------------------*/
 /*------------------------------FUNCTIONS------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -860,6 +887,8 @@ void printMotorInfo() {
   Serial.print("\t");
   Serial.println(MTR_speed_actual);
 }
+
+
 
 // interrupt when any change happen
 void updateEncoderMotor() {
