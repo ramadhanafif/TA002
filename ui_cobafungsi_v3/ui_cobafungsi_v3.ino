@@ -55,10 +55,10 @@ File myFile;
 #define TEMP_SENSOR_PIN   23
 #define SSR_PIN           26
 
-#define BB -1
+#define BB 0
 
-#define PMNS_WAIT_TIME        40
-#define PMNS_ON_TIME          30
+#define PMNS_WAIT_TIME        45
+#define PMNS_ON_TIME          20
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
