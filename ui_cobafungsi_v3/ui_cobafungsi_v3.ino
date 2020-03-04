@@ -395,15 +395,6 @@ void taskDisplay( void * parameter)
   // initialize the LCD
   lcd.begin();
   lcd.createChar(0, arrow);           // arrow
-  lcd.createChar(1, loadingBar[0]);   // loading bar |
-  lcd.createChar(2, loadingBar[1]);   // loading bar ||
-  lcd.createChar(3, loadingBar[2]);   // loading bar |||
-  lcd.createChar(4, loadingBar[3]);   // loading bar ||||
-  lcd.createChar(5, loadingBar[4]);   // loading bar |||||
-  lcd.createChar(6, frame[0]);        // frame right
-  lcd.createChar(7, frame[1]);        // frame bottom
-  lcd.createChar(8, frame[2]);        // frame left
-  lcd.createChar(9, frame[3]);        // frame top
 
   unsigned int value = 0; //ini value apa
 
@@ -477,18 +468,23 @@ void taskDisplay( void * parameter)
         } break;
       case STATE_PANAS_AWAL: {
           // print frame for loading bar
-          lcd.setCursor(0, 1);
-          for (int i = 0; i < 20; i++) {
-            lcd.write(byte(7));
-          }
-          lcd.setCursor(0, 2);
-          lcd.write(byte(6));
-          lcd.setCursor(19, 2);
-          lcd.write(byte(8));
-          lcd.setCursor(0, 3);
-          for (int i = 0; i < 20; i++) {
-            lcd.write(byte(9));
-          }
+          // lcd.createChar(1, frame[0]);        // frame right
+          // lcd.createChar(2, frame[1]);        // frame bottom
+          // lcd.createChar(3, frame[2]);        // frame left
+          // lcd.createChar(4, frame[3]);        // frame top
+
+          // lcd.setCursor(1, 1);
+          // for (int i = 0; i < 18; i++) {
+          //   lcd.write(byte(2));
+          // }
+          // lcd.setCursor(0, 2);
+          // lcd.write(byte(1));
+          // lcd.setCursor(19, 2);
+          // lcd.write(byte(3));
+          // lcd.setCursor(1, 3);
+          // for (int i = 0; i < 18; i++) {
+          //   lcd.write(byte(4));
+          // }
 
           // local variable
           unsigned int piece;
@@ -542,18 +538,23 @@ void taskDisplay( void * parameter)
 
           switch (piece) {
             case 0: {
+                lcd.createChar(1, loadingBar[0]);   // loading bar |
                 lcd.write(byte(1));
               } break;
             case 1: {
+                lcd.createChar(2, loadingBar[1]);   // loading bar ||
                 lcd.write(byte(2));
               } break;
             case 2: {
+                lcd.createChar(3, loadingBar[2]);   // loading bar |||
                 lcd.write(byte(3));
               } break;
             case 3: {
+                lcd.createChar(4, loadingBar[3]);   // loading bar ||||
                 lcd.write(byte(4));
               } break;
             case 4: {
+                lcd.createChar(5, loadingBar[4]);   // loading bar |||||
                 lcd.write(byte(5));
               }
               break;
