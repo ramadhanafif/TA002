@@ -12,6 +12,12 @@
 #include <DallasTemperature.h>
 #include "MedianFilterLib.h"
 
+#if ENABLE_PRINT_DEBUG
+#include <SPI.h>
+#include <SD.h>
+File myFile;
+#endif
+
 /*---------------------------------------------------------------------*/
 /*--------------------------CONSTANTS & PINS----------------------------*/
 /*---------------------------------------------------------------------*/
@@ -49,10 +55,10 @@
 #define TEMP_SENSOR_PIN   23
 #define SSR_PIN           26
 
-#define BB -1
+#define BB 0
 
-#define PMNS_WAIT_TIME        40
-#define PMNS_ON_TIME          30
+#define PMNS_WAIT_TIME        45
+#define PMNS_ON_TIME          20
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
@@ -60,7 +66,9 @@
 #define PMNS_STATE_STEADY 1
 
 
-#define BUZZER_PIN 24
+#define BUZZER_PIN 33
+
+MedianFilter<double> medianFilter(3);
 /*---------------------------------------------------------------------*/
 /*------------------------------TIMER----------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -127,7 +135,7 @@ int lastMSB = 0;
 int lastLSB = 0;
 
 // timer
-volatile int timerCounter;
+volatile unsigned int timerCounter;
 
 // setting PWM properties
 const int MTR_freq = 256000;
@@ -211,7 +219,6 @@ void IRAM_ATTR onTimer() {
   } else if ((stateCondition == STATE_START_ROT) && (durasi == timerCounter)) {
     // Serial.println("Timer Done");
     stateCondition = STATE_DONE;
-    digitalWrite(BUZZER_PIN, HIGH);
   }
   timerCounter++;
 }
@@ -560,14 +567,7 @@ void taskDisplay( void * parameter)
               break;
           }
         } break;
-      case STATE_START_ROT: {  // ini kalo gw taro di bawahnya case 7 ga bisa, tolong benerin!!
-          // Serial.print(temperatur);
-          // Serial.print(" ");
-          // Serial.print(kecepatan);
-          // Serial.print(" ");
-          // Serial.print(jam);
-          // Serial.print(" ");
-          // Serial.println(menit);
+      case STATE_START_ROT: {
           lcd.clear();
 
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
@@ -581,21 +581,27 @@ void taskDisplay( void * parameter)
         } break;
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
-          // delay(100);
-          // vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
-          // vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, SUSPEND);
-
-          // Serial.println("Timer Pause");
         } break;
       case STATE_DONE: { // timer done
           MTR_speed_req = 0;
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
           vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
-          // Serial.println("Timer Done");
+          if ((timerCounter - durasi) % 10 == 0)
+          {
+            for (int m = 0; m < 3; m++) {
+              digitalWrite(BUZZER_PIN, HIGH);
+              vTaskDelay(100);
+              digitalWrite(BUZZER_PIN, LOW);
+              vTaskDelay(50);
+            }
+          }
+#if ENABLE_PRINT_DEBUG
+          vTaskDelay(1000);
+          if (myFile)
+            myFile.close();
+#endif
         } break;
     }
-    // Serial.println("Task Display");
-    // Serial.println(stateCondition);
     vTaskDelay(100);
   }
 }
@@ -775,17 +781,27 @@ void taskPMNS_MAIN(void* v) {
 
 #if ENABLE_PRINT_DEBUG
 void taskPrint(void* v) {
+  char data[100];
+
+  SD.begin(10);
+  sprintf(data, "%s %s", __DATE__, __TIME__);
+  myFile = SD.open(data, FILE_WRITE);
+  if (myFile) {
+    myFile.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
+  }
+
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    Serial.print(stateCondition); Serial.print(",");
-    Serial.print(temperatur); Serial.print(",");
-    Serial.print(TempRead); Serial.print(",");
-    Serial.print(kecepatan); Serial.print(",");
-    Serial.print(MTR_speed_actual); Serial.print(",");
-    Serial.print(durasi); Serial.print(",");
-    Serial.print(timerCounter); Serial.print("");
-    Serial.println();
+    sprintf(data, "%d,%d,%f,%d,%f,%u,%u",
+            stateCondition,
+            temperatur, TempRead,
+            kecepatan, MTR_speed_actual,
+            durasi, timerCounter);
+    Serial.println(data);
+    if (myFile) {
+      myFile.println(data);
+    }
     vTaskDelay(2000);
   }
 }
@@ -914,7 +930,6 @@ void updateEncoder() {
   lastEncoded = encoded; //store this value for next time
 }
 
-MedianFilter<double> medianFilter(3);
 double get_temp(DallasTemperature sensor) {
   for (int x = 0 ; x < 2 ; x++) {
     sensor.requestTemperatures();
