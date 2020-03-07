@@ -12,12 +12,6 @@
 #include <DallasTemperature.h>
 #include "MedianFilterLib.h"
 
-#if ENABLE_PRINT_DEBUG
-#include <SPI.h>
-#include <SD.h>
-File myFile;
-#endif
-
 /*---------------------------------------------------------------------*/
 /*--------------------------CONSTANTS & PINS----------------------------*/
 /*---------------------------------------------------------------------*/
@@ -36,6 +30,8 @@ File myFile;
 #define switchPinBlack   4
 #define pwm              2
 #define encoderMotor    15
+
+//5,23,18,19
 
 /*MAIN State Definitions*/
 #define STATE_INIT         -1
@@ -595,11 +591,6 @@ void taskDisplay( void * parameter)
               vTaskDelay(50);
             }
           }
-#if ENABLE_PRINT_DEBUG
-          vTaskDelay(1000);
-          if (myFile)
-            myFile.close();
-#endif
         } break;
     }
     vTaskDelay(100);
@@ -782,15 +773,11 @@ void taskPMNS_MAIN(void* v) {
 #if ENABLE_PRINT_DEBUG
 void taskPrint(void* v) {
   char data[100];
-
-  SD.begin(10);
-  sprintf(data, "%s %s", __DATE__, __TIME__);
-  myFile = SD.open(data, FILE_WRITE);
-  if (myFile) {
-    myFile.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
-  }
-
-  Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
+  
+  Serial2.begin(115200);
+  Serial2.write(0x2);//Start of text
+  Serial2.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
+  Serial2.write(0x6);//End of Transmission 
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
     sprintf(data, "%d,%d,%f,%d,%f,%u,%u",
@@ -798,11 +785,8 @@ void taskPrint(void* v) {
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
             durasi, timerCounter);
-    Serial.println(data);
-    if (myFile) {
-      myFile.println(data);
-    }
-    vTaskDelay(2000);
+    Serial2.println(data);  
+    vTaskDelay(1500);
   }
 }
 #endif
