@@ -1,38 +1,30 @@
-union Data {
-  int i;
-  float f;
-};
-union Data msg[9];
+
+
+//FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
+uint32_t state = 7;
+uint32_t sptemp = 70;
+double temp = 70.2;
+uint32_t sprpm = 50;
+double rpm = 50.4;
+uint32_t spsec = 3600;
+uint32_t sec = 1200;
+
 void setup() {
   // put your setup code here, to run once:
-
-
-  //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-
-  msg[0].i = 0x2;
-  msg[1].i = 7;
-  msg[2].f = 70;
-  msg[3].i = 70.2;
-  msg[4].f = 50;
-  msg[5].i = 50.4;
-  msg[6].i = 3600;
-  msg[7].i = 1200;
-  msg[8].i = 0x6;
-  Serial2.begin(115200);
-  //  for (int x = 0; x < 9; x++)
-  //  {
-  //    Serial2.write(msg[x].i);
-  //  }
+  Serial2.begin(9600);
+  Serial.begin(115200);
 }
+char data[99];
 
 void loop() {
   // put your main code here, to run repeatedly:
-  for (int x = 0; x < 9; x++)
-  {
-    if (x == 4 || x == 2)
-      Serial2.print(msg[x].f);
-    else
-      Serial2.print(msg[x].i);
-  }
+  sprintf(data, "%d,%d,%.2f,%d,%.2f,%d,%d",
+          state,
+          sptemp, temp,
+          sprpm, rpm,
+          spsec, sec);
+
+  Serial2.println(data);
   delay(3000);
+
 }
