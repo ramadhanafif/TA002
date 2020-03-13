@@ -22,14 +22,14 @@
 #define menConstant    0
 #define constantEncoderVal 28116000
 
-#define encoderPin1     19
-#define encoderPin2     18
-#define switchPinGreen   5
-#define switchPinYellow 17
-#define switchPinWhite  16
-#define switchPinBlack   4
-#define pwm              2
-#define encoderMotor    15
+#define encoderPin1     25//19
+#define encoderPin2     26//18
+#define switchPinGreen  27//5
+#define switchPinYellow 13//17
+#define switchPinWhite  12//16
+#define switchPinBlack  14// 4
+#define pwm             0// 2
+#define encoderMotor    2// 15
 
 //5,23,18,19
 
@@ -48,8 +48,8 @@
 #define STATE_DONE         10
 
 /* PEMANAS Definitions*/
-#define TEMP_SENSOR_PIN   23
-#define SSR_PIN           26
+#define TEMP_SENSOR_PIN   18//23
+#define SSR_PIN           5//26
 
 #define BB 0
 
@@ -244,7 +244,7 @@ void setup() {
   xTaskCreate(
     taskPrint,        /* Task function. */
     "printing",          /* String with name of task. */
-    1024,                    /* Stack size in bytes. */
+    2024,                    /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
     1,                        /* Priority of the task. */
     NULL );  /* Task handle. */
@@ -773,11 +773,11 @@ void taskPMNS_MAIN(void* v) {
 #if ENABLE_PRINT_DEBUG
 void taskPrint(void* v) {
   char data[100];
-  
-  Serial2.begin(115200);
-  Serial2.write(0x2);//Start of text
-  Serial2.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
-  Serial2.write(0x6);//End of Transmission 
+
+  Serial.begin(115200);
+  Serial.write(0x2);//Start of text
+  Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
+  Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
     sprintf(data, "%d,%d,%f,%d,%f,%u,%u",
@@ -785,7 +785,7 @@ void taskPrint(void* v) {
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
             durasi, timerCounter);
-    Serial2.println(data);  
+    Serial.println(data);
     vTaskDelay(1500);
   }
 }
