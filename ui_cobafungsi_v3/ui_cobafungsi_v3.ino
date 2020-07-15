@@ -470,6 +470,8 @@ void taskDisplay( void * parameter)
           }
         } break;
       case STATE_PANAS_AWAL: {
+          // !!!!! buat bypass aja !!!!!
+          stateCondition++;
           // print frame for loading bar
           // lcd.createChar(1, frame[0]);        // frame right
           // lcd.createChar(2, frame[1]);        // frame bottom
