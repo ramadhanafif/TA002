@@ -492,7 +492,7 @@ void taskDisplay( void * parameter)
           //   lcd.write(byte(4));
           // }
 
-          // Buffer variable
+          // buffer variable
           char bufferForPrintTemp[4];
           char bufferForprintTempRead[4];
 
@@ -520,7 +520,7 @@ void taskDisplay( void * parameter)
           if (PMNS_flag_pemanas_awal_done == 1) {
             stateCondition = STATE_START_ROT;
             PMNS_pemanas_state = PMNS_STATE_STEADY;
-            percent = 100;
+            // percent = 100;
           }
 
           // // calculation from sensor read
