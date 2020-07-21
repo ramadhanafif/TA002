@@ -632,6 +632,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
 
     // motor use gear ratio 1 : 46.8512
+    // gear pulley system using gear ratio 20 : 36 = 1,8
     // speed from high speed gear
     // every 1 rotation MTR_encoderMotorValue equal to 22
     MTR_newposition = MTR_encoderMotorValue / 22;
@@ -646,7 +647,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     real_valueRPS = simpleKalmanFilter.updateEstimate(real_valueRPS);
 
     // speed from slow speed gear
-    float real_valueRPM = (real_valueRPS / 46.8512) * 60;
+    float real_valueRPM = (real_valueRPS / 46.8512) * (36 / 20) * 60;
     MTR_speed_actual = real_valueRPM;
 
     // Serial.println("Task Speed Read");
@@ -874,8 +875,6 @@ void printMotorInfo() {
   Serial.print("\t");
   Serial.println(MTR_speed_actual);
 }
-
-
 
 // interrupt when any change happen
 void updateEncoderMotor() {
