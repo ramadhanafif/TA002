@@ -160,6 +160,7 @@ volatile double MTR_encoderMotorValue = 0;
 boolean forward = 1;
 boolean startProcess = 1;
 boolean pauseState = 0;
+boolean flagForClearLCD = 0; // variable for clear the lcd at the STATE_START_ROT
 
 // PEMANAS
 unsigned int PMNS_pemanas_state = 0;
@@ -495,8 +496,6 @@ void taskDisplay( void * parameter)
           // buffer variable
           char bufferForPrintTemp[4];
           char bufferForprintTempRead[4];
-          // variable for clear the lcd at the next state
-          boolean flagForClearLCD = 0;
 
           // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
