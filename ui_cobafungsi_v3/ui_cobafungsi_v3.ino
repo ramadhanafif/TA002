@@ -495,8 +495,10 @@ void taskDisplay( void * parameter)
           // buffer variable
           char bufferForPrintTemp[4];
           char bufferForprintTempRead[4];
+          // variable for clear the lcd at the next state
+          boolean flagForClearLCD = 0;
 
-          // Convert to string
+          // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
           sprintf(bufferForprintTempRead, "%3f", TempRead);
 
@@ -550,7 +552,40 @@ void taskDisplay( void * parameter)
           // }
         } break;
       case STATE_START_ROT: {
-          lcd.clear();
+          if (!flagForClearLCD) {
+            lcd.clear();
+            flagForClearLCD = 1; 
+          }
+
+          // buffer variable
+          char tempActual[4];
+          char speedActual[4];
+          char setTemp[4];
+          char setSpeed[4];
+
+          // convert to string
+          sprintf(tempActual, "%3f", TempRead);
+          sprintf(speedActual, "%3f", MTR_speed_actual);
+          sprintf(tempActual, "%3d", temperatur);
+          sprintf(speedActual, "%3d", kecepatan);
+
+          lcd.setCursor(0, 0);
+          lcd.print("Set point: ");
+          lcd.setCursor(12, 0);
+          lcd.print(setSpeed);
+          lcd.print(setTemp);
+          lcd.setCursor(0, 1);
+          lcd.print("Kecepatan  : ");
+          lcd.setCursor(14, 1);
+          lcd.print(speedActual);
+          lcd.setCursor(0, 2);
+          lcd.print("Suhu actual: ");
+          lcd.setCursor(14, 2);
+          lcd.print(speedActual);
+          lcd.setCursor(0, 3);
+          lcd.print("Sisa waktu : ");
+          lcd.setCursor(14, 3);
+       
 
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
           vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
