@@ -471,7 +471,8 @@ void taskDisplay( void * parameter)
         } break;
       case STATE_PANAS_AWAL: {
           // !!!!! buat bypass aja !!!!!
-          stateCondition++;
+          // stateCondition++;
+          
           // print frame for loading bar
           // lcd.createChar(1, frame[0]);        // frame right
           // lcd.createChar(2, frame[1]);        // frame bottom
@@ -491,12 +492,26 @@ void taskDisplay( void * parameter)
           //   lcd.write(byte(4));
           // }
 
-          // local variable
-          unsigned int piece;
-          double percent;
+          // Buffer variable
+          char bufferForPrintTemp[4];
+          char bufferForprintTempRead[4];
+
+          // Convert to string
+          sprintf(bufferForPrintTemp, "%3d", temperatur);
+          sprintf(bufferForprintTempRead, "%3d", TempRead);
+
 
           lcd.setCursor(0, 0);
           lcd.print("Memanaskan");
+          lcd.setCursor(0, 1);
+          lcd.print("Suhu target: ");
+          lcd.setCursor(14, 1);
+          lcd.print(bufferForPrintTemp);
+          lcd.setCursor(0, 2);
+          lcd.print("Suhu aktual: ");
+          lcd.setCursor(14, 2);
+          lcd.print(bufferForprintTempRead);
+
 
           //PERINTAH PANAS MASUK SINI
           vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
@@ -518,15 +533,8 @@ void taskDisplay( void * parameter)
           //   value = 0;
           // }
 
-          // percent = value;
-          percent = (double)(TempRead - 25) * 100 / (temperatur - 25);
-          double position = ((columnLength - 2) / 100 * percent);
-
           // Serial.print(TempRead); Serial.print(" ");
           // Serial.println(percent);
-
-          lcd.setCursor((position + 1), 2);
-          piece = (int)(position * 5) % 5;
 
           // drawing charater's colums
           // if (piece == 0) {
@@ -540,30 +548,6 @@ void taskDisplay( void * parameter)
           // } else {
           //   lcd.write(byte(5));
           // }
-
-          switch (piece) {
-            case 0: {
-                lcd.createChar(1, loadingBar[0]);   // loading bar |
-                lcd.write(byte(1));
-              } break;
-            case 1: {
-                lcd.createChar(2, loadingBar[1]);   // loading bar ||
-                lcd.write(byte(2));
-              } break;
-            case 2: {
-                lcd.createChar(3, loadingBar[2]);   // loading bar |||
-                lcd.write(byte(3));
-              } break;
-            case 3: {
-                lcd.createChar(4, loadingBar[3]);   // loading bar ||||
-                lcd.write(byte(4));
-              } break;
-            case 4: {
-                lcd.createChar(5, loadingBar[4]);   // loading bar |||||
-                lcd.write(byte(5));
-              }
-              break;
-          }
         } break;
       case STATE_START_ROT: {
           lcd.clear();
