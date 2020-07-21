@@ -565,8 +565,8 @@ void taskDisplay( void * parameter)
           // convert to string
           sprintf(tempActual, "%3f", TempRead);
           sprintf(speedActual, "%3f", MTR_speed_actual);
-          sprintf(tempActual, "%3d", temperatur);
-          sprintf(speedActual, "%3d", kecepatan);
+          sprintf(setTemp, "%3d", temperatur);
+          sprintf(setSpeed, "%3d", kecepatan);
 
           lcd.setCursor(0, 0);
           lcd.print("Set point: ");
@@ -681,7 +681,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     real_valueRPS = simpleKalmanFilter.updateEstimate(real_valueRPS);
 
     // speed from slow speed gear
-    float real_valueRPM = ((real_valueRPS / 1,8) / 46.8512) * 60;
+    float real_valueRPM = ((real_valueRPS / 1.8) / 46.8512) * 60;
     MTR_speed_actual = real_valueRPM;
 
     // Serial.println("Task Speed Read");
