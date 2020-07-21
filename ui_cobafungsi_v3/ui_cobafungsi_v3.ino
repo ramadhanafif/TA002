@@ -92,10 +92,10 @@ bool IsRun_Input = RUNNING;
 bool IsRun_Pause = RUNNING;
 bool IsRun_PWMCalculator = RUNNING;
 
-#define STACK_SIZE_PAUSE          1024
-#define STACK_SIZE_PWMCalculator  1024
-#define STACK_SIZE_INPUT          1024
-#define STACK_SIZE_SPEEDREAD      1024
+#define STACK_SIZE_PAUSE          2024
+#define STACK_SIZE_PWMCalculator  2024
+#define STACK_SIZE_INPUT          2024
+#define STACK_SIZE_SPEEDREAD      2024
 #define STACK_SIZE_PMNS           5000
 
 #define PRIORITY_TASK_PAUSE           1
@@ -108,11 +108,11 @@ bool IsRun_PWMCalculator = RUNNING;
 /*-----------------------------VARIABLES-------------------------------*/
 /*---------------------------------------------------------------------*/
 // universal needs
-int stateCondition = STATE_INIT;
-int temperatur = temConstant;
-int kecepatan = kecConstant;
-int jam = jamConstant;
-int menit = menConstant;
+int stateCondition = 6; //STATE_INIT;
+int temperatur = 50;//temConstant;
+int kecepatan = 50;//kecConstant;
+int jam = 0;//jamConstant;
+int menit = 4;//menConstant;
 unsigned int durasi = 0;
 
 boolean currentButtonStateGreen;
@@ -141,9 +141,9 @@ const int MTR_resolution = 8;
 // PID controller
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
-double MTR_Kp = 0.5;
-double MTR_Kd = 0.01;
-double MTR_Ki = 0.03;
+double MTR_Kp = 0.8;
+double MTR_Kd = 0.03;
+double MTR_Ki = 0.02;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -499,7 +499,7 @@ void taskDisplay( void * parameter)
 
           // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
-          sprintf(bufferForprintTempRead, "%3f", int(TempRead));
+          sprintf(bufferForprintTempRead, "%3d", int(TempRead));
 
 
           lcd.setCursor(0, 0);
@@ -582,7 +582,7 @@ void taskDisplay( void * parameter)
           lcd.setCursor(14, 2);
           lcd.print(tempActual);
           lcd.setCursor(0, 3);
-          lcd.print("Sisa waktu : ");
+          lcd.print("Sisa waktu : " + String(durasi-timerCounter) +" "+ String(MTR_pidTerm));
           lcd.setCursor(14, 3);
        
 
@@ -606,7 +606,7 @@ void taskDisplay( void * parameter)
           {
             for (int m = 0; m < 3; m++) {
               digitalWrite(BUZZER_PIN, HIGH);
-              vTaskDelay(100);
+              vTaskDelay(150);
               digitalWrite(BUZZER_PIN, LOW);
               vTaskDelay(50);
             }
@@ -743,7 +743,7 @@ void taskPMNS_MAIN(void* v) {
           ledcWrite(pwm_ledChannel, dutyCycle);
 
           //Check for temperature steadiness
-          if (abs(TempRead - setPoint) <= 2.5) {
+          if (abs(TempRead - setPoint) <= 1) {
             temp_counter++;
           }
           if (temp_counter >= 2) {
@@ -948,8 +948,8 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 8; //10
-  double ki = 0.005; //0.011
+  double kp = 10; //8
+  double ki = 0.05; //0.005
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
