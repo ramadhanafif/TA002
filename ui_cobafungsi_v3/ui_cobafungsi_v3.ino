@@ -499,7 +499,7 @@ void taskDisplay( void * parameter)
 
           // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
-          sprintf(bufferForprintTempRead, "%3f", TempRead);
+          sprintf(bufferForprintTempRead, "%3f", int(TempRead));
 
 
           lcd.setCursor(0, 0);
@@ -563,8 +563,8 @@ void taskDisplay( void * parameter)
           char setSpeed[4];
 
           // convert to string
-          sprintf(tempActual, "%3f", TempRead);
-          sprintf(speedActual, "%3f", MTR_speed_actual);
+          sprintf(tempActual, "%3d", int(TempRead));
+          sprintf(speedActual, "%3d", int(MTR_speed_actual));
           sprintf(setTemp, "%3d", temperatur);
           sprintf(setSpeed, "%3d", kecepatan);
 
@@ -580,7 +580,7 @@ void taskDisplay( void * parameter)
           lcd.setCursor(0, 2);
           lcd.print("Suhu actual: ");
           lcd.setCursor(14, 2);
-          lcd.print(speedActual);
+          lcd.print(tempActual);
           lcd.setCursor(0, 3);
           lcd.print("Sisa waktu : ");
           lcd.setCursor(14, 3);
