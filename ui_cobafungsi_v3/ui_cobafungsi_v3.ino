@@ -22,14 +22,14 @@
 #define menConstant    0
 #define constantEncoderVal 28116000
 
-#define encoderPin1     25//19
-#define encoderPin2     26//18
-#define switchPinGreen  27//5
+#define encoderPin1     33//25//19
+#define encoderPin2     25//26//18
+#define switchPinGreen  26//27//5
 #define switchPinYellow 13//17
-#define switchPinWhite  12//16
-#define switchPinBlack  14// 4
-#define pwm             0// 2
-#define encoderMotor    2// 15
+#define switchPinWhite  14//12//16
+#define switchPinBlack  27//14//4
+#define pwm             18//0// 2
+#define encoderMotor    17//2// 15
 
 //5,23,18,19
 
@@ -48,8 +48,8 @@
 #define STATE_DONE         10
 
 /* PEMANAS Definitions*/
-#define TEMP_SENSOR_PIN   18//23
-#define SSR_PIN           5//26
+#define TEMP_SENSOR_PIN   19//18//23
+#define SSR_PIN           23//5//26
 
 #define BB 0
 
@@ -62,7 +62,7 @@
 #define PMNS_STATE_STEADY 1
 
 
-#define BUZZER_PIN 33
+#define BUZZER_PIN 32//33
 
 MedianFilter<double> medianFilter(3);
 /*---------------------------------------------------------------------*/
@@ -108,11 +108,11 @@ bool IsRun_PWMCalculator = RUNNING;
 /*-----------------------------VARIABLES-------------------------------*/
 /*---------------------------------------------------------------------*/
 // universal needs
-int stateCondition = 6; //STATE_INIT;
-int temperatur = 41;//temConstant;
-int kecepatan = 40;//kecConstant;
-int jam = 0;//jamConstant;
-int menit = 4;//menConstant;
+int stateCondition = STATE_INIT;
+int temperatur = temConstant;
+int kecepatan = kecConstant;
+int jam = jamConstant;
+int menit = menConstant;
 unsigned int durasi = 0;
 
 boolean currentButtonStateGreen;
@@ -561,16 +561,16 @@ void taskDisplay( void * parameter)
           char speedActual[4];
           char setTemp[4];
           char setSpeed[4];
-          char hourLeft[4];
-          char minuteLeft[4];
+          //char hourLeft[4];
+          //char minuteLeft[4];
 
           // convert to string
           sprintf(tempActual, "%3d", int(TempRead));
           sprintf(speedActual, "%3d", int(MTR_speed_actual));
           sprintf(setTemp, "%3d", temperatur);
           sprintf(setSpeed, "%3d", kecepatan);          
-          sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
-          sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
+          //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
+          //sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
 
           lcd.setCursor(0, 0);
           lcd.print("Set point: ");
@@ -641,7 +641,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki) + 180;
       MTR_last_error = MTR_error;
       MTR_sum_error += MTR_error;
-      MTR_sum_error = constrain(MTR_sum_error, -1000, 1000);
+      MTR_sum_error = constrain(MTR_sum_error, -3000, 3000);
       MTR_PWM_val = constrain(MTR_pidTerm, 0, 255);
 
       // PWM signal
@@ -806,7 +806,7 @@ void taskPrint(void* v) {
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%d,%d,%f,%d,%f,%u,%u, %d",
+    sprintf(data, "%d,%d,%f,%d,%f,%u,%u,%d",
             stateCondition,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
