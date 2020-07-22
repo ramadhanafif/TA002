@@ -561,16 +561,20 @@ void taskDisplay( void * parameter)
           char speedActual[4];
           char setTemp[4];
           char setSpeed[4];
+          char hourLeft[4];
+          char minuteLeft[4];
 
           // convert to string
           sprintf(tempActual, "%3d", int(TempRead));
           sprintf(speedActual, "%3d", int(MTR_speed_actual));
           sprintf(setTemp, "%3d", temperatur);
-          sprintf(setSpeed, "%3d", kecepatan);
+          sprintf(setSpeed, "%3d", kecepatan);          
+          sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
+          sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600)  % 60));
 
           lcd.setCursor(0, 0);
           lcd.print("Set point: ");
-          lcd.setCursor(12, 0);
+          lcd.setCursor(14, 0);
           lcd.print(setSpeed);
           lcd.print(setTemp);
           lcd.setCursor(0, 1);
@@ -582,9 +586,10 @@ void taskDisplay( void * parameter)
           lcd.setCursor(14, 2);
           lcd.print(tempActual);
           lcd.setCursor(0, 3);
-          lcd.print("Sisa waktu : " + String(durasi-timerCounter) +" "+ String(MTR_pidTerm));
+          lcd.print("Sisa waktu : ");
           lcd.setCursor(14, 3);
-       
+          lcd.print(hourLeft);
+          lcd.print(minuteLeft);
 
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
           vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
