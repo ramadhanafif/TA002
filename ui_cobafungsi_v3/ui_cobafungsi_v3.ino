@@ -109,8 +109,8 @@ bool IsRun_PWMCalculator = RUNNING;
 /*---------------------------------------------------------------------*/
 // universal needs
 int stateCondition = 6; //STATE_INIT;
-int temperatur = 50;//temConstant;
-int kecepatan = 50;//kecConstant;
+int temperatur = 41;//temConstant;
+int kecepatan = 40;//kecConstant;
 int jam = 0;//jamConstant;
 int menit = 4;//menConstant;
 unsigned int durasi = 0;
@@ -141,9 +141,9 @@ const int MTR_resolution = 8;
 // PID controller
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
-double MTR_Kp = 0.8;
-double MTR_Kd = 0.03;
-double MTR_Ki = 0.02;
+double MTR_Kp = 0.3;
+double MTR_Kd = 0.05;
+double MTR_Ki = 0.015;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -570,7 +570,7 @@ void taskDisplay( void * parameter)
           sprintf(setTemp, "%3d", temperatur);
           sprintf(setSpeed, "%3d", kecepatan);          
           sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
-          sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600)  % 60));
+          sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
 
           lcd.setCursor(0, 0);
           lcd.print("Set point: ");
@@ -586,10 +586,10 @@ void taskDisplay( void * parameter)
           lcd.setCursor(14, 2);
           lcd.print(tempActual);
           lcd.setCursor(0, 3);
-          lcd.print("Sisa waktu : ");
-          lcd.setCursor(14, 3);
-          lcd.print(hourLeft);
-          lcd.print(minuteLeft);
+          // lcd.print("Sisa waktu : ");
+          // lcd.setCursor(14, 3);
+          // lcd.print(hourLeft);
+          // lcd.print(minuteLeft);
 
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
           vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
@@ -638,10 +638,10 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       ledcWrite(MTR_pwmChannel, 0);
     } else {
       MTR_error = MTR_speed_req - MTR_speed_actual;
-      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + MTR_sum_error * MTR_Ki + 195;
+      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki) + 180;
       MTR_last_error = MTR_error;
       MTR_sum_error += MTR_error;
-      MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
+      MTR_sum_error = constrain(MTR_sum_error, -1000, 1000);
       MTR_PWM_val = constrain(MTR_pidTerm, 0, 255);
 
       // PWM signal
@@ -802,15 +802,15 @@ void taskPrint(void* v) {
 
   Serial.begin(115200);
   Serial.write(0x2);//Start of text
-  Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
+  Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%d,%d,%f,%d,%f,%u,%u",
+    sprintf(data, "%d,%d,%f,%d,%f,%u,%u, %d",
             stateCondition,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
-            durasi, timerCounter);
+            durasi, timerCounter, MTR_PWM_val);
     Serial.println(data);
     vTaskDelay(1500);
   }
