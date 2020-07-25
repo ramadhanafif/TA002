@@ -1,8 +1,12 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SoftwareSerial.h>
-#include <EEPROM.h>
-
+/*
+ ** MOSI - pin 11
+ ** MISO - pin 12
+ ** CLK - pin 13
+ ** CS - pin 4 (CS_SD)
+*/
 #define CS_SD 4
 
 #define RXs 2
@@ -10,23 +14,14 @@
 
 #define BRATE 57600
 
-#define VER_ADDR 0 //Default EEPROM Address
-
-#define RST_VER 1
-
 SoftwareSerial mySerial(RXs, TXs); // RX, TX
 File myFile;
 
 void setup()
 {
-
-#if RST_VER
-  EEPROM.update(VER_ADDR, 0);
-#endif
-
   /*INISIALISASI SERIAL, MY SERIAL, SD CARD, FILENAME*/
-  Serial.begin(57600);
-  mySerial.begin(57600);
+  Serial.begin(BRATE);
+  mySerial.begin(BRATE);
 
   if (!SD.begin(CS_SD)) {
     Serial.println("SD INIT FAILED");
@@ -34,34 +29,48 @@ void setup()
   }
 
   //Filename SET
-  uint8_t logversion = EEPROM.read(VER_ADDR);
+  uint8_t logversion = 0;
 
-  String filename = "datalog" + String(logversion) + ".csv";
+  String filename = "dtlog" + String(logversion) + ".csv";
   while (SD.exists(filename)) {
     logversion++;
-    filename = "datalog" + String(logversion) + ".csv";
+    filename = "dtlog" + String(logversion) + ".csv";
   }
-  EEPROM.update(VER_ADDR, logversion);
   Serial.println("Data log created: " + filename);
 
   myFile = SD.open(filename, FILE_WRITE);
 
-  Serial.println("DATA LOGGER RUNNING");
-  for (int i = 0; i < 100; i++)
-  {
-    myFile.println("data" + String (i));
-    Serial.println("data" + String (i));
-  }
-  myFile.close();
-  Serial.println("datawrite done");
+  Serial.println("Data logger running");
+
+  readFromSD(filename);
 }
 
 void loop() // run over and over
 {
-  // if (mySerial.available()) {
-  //   String datain;
-  //   datain = (mySerial.readStringUntil('\n'));
-  //   Serial.println(datain);
-  //   myFile.println(datain);
-  // }
+  if (mySerial.available()) {
+    String datain;
+    datain = (mySerial.readStringUntil('\n'));
+    Serial.println("arduino;" + datain);
+    myFile.println(datain);
+  }
+}
+
+
+void readFromSD(String filename) {
+  File sdfile;
+  sdfile = SD.open(filename);
+
+  if (sdfile) {
+    Serial.println("Opening " + filename + " success");
+
+    //Read per character
+    while (sdfile.available()) {
+      Serial.write(sdfile.read());
+    }
+    sdfile.close();
+  }
+  else {
+    Serial.println("ERROR opening " + filename + "!");
+    return;
+  }
 }
