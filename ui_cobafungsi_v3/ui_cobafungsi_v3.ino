@@ -225,7 +225,7 @@ void IRAM_ATTR onTimer() {
 /*-------------------------------SETUP---------------------------------*/
 /*---------------------------------------------------------------------*/
 void setup() {
-  Serial.begin (112500);
+  Serial.begin (57600);
 
   // timer
   pinMode(BUZZER_PIN, OUTPUT);
@@ -698,14 +698,16 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   }
 }
 
+unsigned int PMNS_ssr = 2;
+unsigned int PMNS_counter = 0;
+
 void taskPMNS_MAIN(void* v) {
   double prevtime = millis();
   double cumerror = 0;
 
   //  unsigned int prev_TempRead;
   unsigned int temp_counter = 0;
-  unsigned int PMNS_ssr = 2;
-  unsigned int PMNS_counter = 0;
+
 
   const int pwm_freq = 2;
   const int pwm_ledChannel = 2;
@@ -788,7 +790,7 @@ void taskPMNS_MAIN(void* v) {
             case 2: //nunggu selama WAIT TIME
               digitalWrite(SSR_PIN, LOW);
               PMNS_counter++;
-              if (PMNS_counter == PMNS_WAIT_TIME)
+              if (PMNS_counter >= PMNS_WAIT_TIME)
               {
                 PMNS_ssr = 0;
               }
@@ -804,14 +806,14 @@ void taskPMNS_MAIN(void* v) {
 void taskPrint(void* v) {
   char data[100];
 
-  Serial.begin(115200);
+  Serial.begin(57600);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%d,%d,%f,%d,%f,%u,%u,%d",
-            stateCondition,
+    sprintf(data, "%d,%d,%d, %d,%f,%d,%f,%u,%u,%d",
+            stateCondition,PMNS_ssr,PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
             durasi, timerCounter, MTR_PWM_val);
