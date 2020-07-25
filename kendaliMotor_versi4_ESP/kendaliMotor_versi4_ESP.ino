@@ -13,7 +13,7 @@ const int pwmChannel = 0;
 const int resolution = 8;
 
 // PID controller
-int speed_req = 5;    // in rpm
+int speed_req = 27;    // in rpm
 float speed_actual = 0;   // in rpm
 double Kp = 5;
 double Kd = 0.5;
