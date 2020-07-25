@@ -141,9 +141,9 @@ const int MTR_resolution = 8;
 // PID controller
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
-double MTR_Kp = 0.3;
-double MTR_Kd = 0.05;
-double MTR_Ki = 0.015;
+double MTR_Kp = 5;
+double MTR_Kd = 0.5;
+double MTR_Ki = 0.11;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -233,31 +233,33 @@ void setup() {
   timerAttachInterrupt(timer, &onTimer, true);
   timerAlarmWrite(timer, 1000000, true);
 
-  xTaskCreate(
+  xTaskCreatePinnedToCore(
     taskSpeedRead_rpm,        /* Task function. */
     "SpeedRead_rpm",          /* String with name of task. */
-    STACK_SIZE_SPEEDREAD,                    /* Stack size in bytes. */
+    STACK_SIZE_SPEEDREAD,     /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
-    PRIORITY_TASK_SPEEDREAD,                        /* Priority of the task. */
-    &TaskHandle_SpeadRead );  /* Task handle. */
+    PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
+    &TaskHandle_SpeadRead,
+    0);  /* Task handle. */
 
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
-    taskPrint,        /* Task function. */
-    "printing",          /* String with name of task. */
-    2024,                    /* Stack size in bytes. */
+    taskPrint,                /* Task function. */
+    "printing",               /* String with name of task. */
+    2024,                     /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
     1,                        /* Priority of the task. */
-    NULL );  /* Task handle. */
+    NULL );                   /* Task handle. */
 #endif
 
-  xTaskCreate(
+  xTaskCreatePinnedToCore(
     taskPWMCalculator,        /* Task function. */
     "PWMCalculator",          /* String with name of task. */
-    STACK_SIZE_PWMCalculator,                    /* Stack size in bytes. */
+    STACK_SIZE_PWMCalculator, /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
-    PRIORITY_TASK_PWMCalculator,                        /* Priority of the task. */
-    &TaskHandle_PWMCalculator);                    /* Task handle. */
+    PRIORITY_TASK_PWMCalculator,          /* Priority of the task. */
+    &TaskHandle_PWMCalculator,            /* Task handle. */
+    0);          
 
   xTaskCreate(
     taskInput,                /* Task function. */
@@ -361,7 +363,7 @@ void taskInput( void * parameter )
   }
 }
 
-void taskPause( void * paramaeter)
+void taskPause( void * parameter)
 {
   pinMode(switchPinYellow, INPUT_PULLUP);
 
@@ -638,10 +640,10 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       ledcWrite(MTR_pwmChannel, 0);
     } else {
       MTR_error = MTR_speed_req - MTR_speed_actual;
-      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki) + 180;
+      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki) + 120;
       MTR_last_error = MTR_error;
       MTR_sum_error += MTR_error;
-      MTR_sum_error = constrain(MTR_sum_error, -3000, 3000);
+      MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
       MTR_PWM_val = constrain(MTR_pidTerm, 0, 255);
 
       // PWM signal
@@ -686,7 +688,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     real_valueRPS = simpleKalmanFilter.updateEstimate(real_valueRPS);
 
     // speed from slow speed gear
-    float real_valueRPM = ((real_valueRPS / 1.8) / 46.8512) * 60;
+    float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
 
     // Serial.println("Task Speed Read");
