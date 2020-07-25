@@ -101,7 +101,7 @@ bool IsRun_PWMCalculator = RUNNING;
 #define PRIORITY_TASK_PAUSE           1
 #define PRIORITY_TASK_PWMCalculator   2
 #define PRIORITY_TASK_INPUT           3
-#define PRIORITY_TASK_SPEEDREAD       4
+#define PRIORITY_TASK_SPEEDREAD       5
 #define PRIORITY_TASK_PMNS            4
 
 /*---------------------------------------------------------------------*/
@@ -143,7 +143,7 @@ int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
 double MTR_Kp = 5;
 double MTR_Kd = 0.5;
-double MTR_Ki = 0.11;
+double MTR_Ki = 0.1;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -398,6 +398,8 @@ void taskDisplay( void * parameter)
   attachInterrupt(encoderPin1, updateEncoder, CHANGE);
   attachInterrupt(encoderPin2, updateEncoder, CHANGE);
 
+  int counter = 0;
+
   // initialize the LCD
   lcd.begin();
   lcd.createChar(0, arrow);           // arrow
@@ -573,25 +575,32 @@ void taskDisplay( void * parameter)
           sprintf(setSpeed, "%3d", kecepatan);          
           //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
           //sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
+          
+          if (counter >=10){
+            lcd.setCursor(0, 0);
+            lcd.print("Set point: ");
+            lcd.setCursor(12, 0);
+            lcd.print(setSpeed);
+            lcd.print(setTemp);
+            lcd.setCursor(0, 1);
+            lcd.print("Kecepatan  : ");
+            lcd.setCursor(14, 1);
+            lcd.print(speedActual);
+            lcd.setCursor(0, 2);
+            lcd.print("Suhu actual: ");            
+            // lcd.setCursor(14, 2);
+            // lcd.print(tempActual);
+            // lcd.setCursor(0, 3);
+            // lcd.print("Sisa waktu : ");
+            // lcd.setCursor(14, 3);
+            // lcd.print(hourLeft);
+            // lcd.print(minuteLeft);
 
-          lcd.setCursor(0, 0);
-          lcd.print("Set point: ");
-          // lcd.setCursor(12, 0);
-          // lcd.print(setSpeed);
-          // lcd.print(setTemp);
-          // lcd.setCursor(0, 1);
-          // lcd.print("Kecepatan  : ");
-          // lcd.setCursor(14, 1);
-          // lcd.print(speedActual);
-          // lcd.setCursor(0, 2);
-          // lcd.print("Suhu actual: ");
-          // lcd.setCursor(14, 2);
-          // lcd.print(tempActual);
-          // lcd.setCursor(0, 3);
-          // lcd.print("Sisa waktu : ");
-          // lcd.setCursor(14, 3);
-          // lcd.print(hourLeft);
-          // lcd.print(minuteLeft);
+            counter = 0;
+            
+          } else {
+            counter++;
+          }
 
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
           vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
@@ -626,6 +635,7 @@ void taskDisplay( void * parameter)
 
 void taskPWMCalculator(void *pvParameters)  // This is a task.
 {
+  (void) pvParameters;
 
   ledcSetup(MTR_pwmChannel, MTR_freq, MTR_resolution);
 
@@ -658,6 +668,8 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
 
 void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 {
+  (void) pvParameters;
+
   pinMode(encoderMotor, INPUT_PULLUP);
   attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);
 
@@ -665,7 +677,6 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   const TickType_t xFrequency = 20;   // program will run every 20ms
 
   vTaskControl(NULL, &IsRun_SpeedRead_rpm, SUSPEND);
-
 
   // Initialise the xLastWakeTime variable with the current time.
   xLastWakeTimeSpeedRead = xTaskGetTickCount();
@@ -690,6 +701,8 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     // speed from slow speed gear
     float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
+
+    // vTaskDelay(20);       
 
     // Serial.println("Task Speed Read");
     //  printMotorInfo();
