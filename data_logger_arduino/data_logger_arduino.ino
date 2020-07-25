@@ -1,12 +1,14 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SoftwareSerial.h>
+
 /*
  ** MOSI - pin 11
  ** MISO - pin 12
  ** CLK - pin 13
  ** CS - pin 4 (CS_SD)
 */
+
 #define CS_SD 4
 
 #define RXs 2
@@ -16,6 +18,10 @@
 
 SoftwareSerial mySerial(RXs, TXs); // RX, TX
 File myFile;
+
+String FilenameCreate(int version){
+  return ("Datalog" + String(version) + ".csv");
+}
 
 void setup()
 {
@@ -31,7 +37,7 @@ void setup()
   //Filename SET
   uint8_t logversion = 0;
 
-  String filename = "dtlog" + String(logversion) + ".csv";
+  String filename = "datalog" + String(logversion) + ".csv";
   while (SD.exists(filename)) {
     logversion++;
     filename = "dtlog" + String(logversion) + ".csv";

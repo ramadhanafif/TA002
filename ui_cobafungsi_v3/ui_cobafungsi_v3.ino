@@ -22,6 +22,8 @@
 #define menConstant    0
 #define constantEncoderVal 28116000
 
+#define BRATE 57600
+
 #define encoderPin1     25//19
 #define encoderPin2     26//18
 #define switchPinGreen  27//5
@@ -224,7 +226,7 @@ void IRAM_ATTR onTimer() {
 /*-------------------------------SETUP---------------------------------*/
 /*---------------------------------------------------------------------*/
 void setup() {
-  Serial.begin (112500);
+  Serial.begin (57600);
 
   // timer
   pinMode(BUZZER_PIN, OUTPUT);
@@ -774,7 +776,7 @@ void taskPMNS_MAIN(void* v) {
 void taskPrint(void* v) {
   char data[100];
 
-  Serial.begin(115200);
+  Serial.begin(BRATE);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik");
   Serial.write(0x6);//End of Transmission
