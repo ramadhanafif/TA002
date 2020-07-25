@@ -361,7 +361,7 @@ void taskInput( void * parameter )
   }
 }
 
-void taskPause( void * paramaeter)
+void taskPause( void * parameter)
 {
   pinMode(switchPinYellow, INPUT_PULLUP);
 
@@ -574,7 +574,7 @@ void taskDisplay( void * parameter)
 
           lcd.setCursor(0, 0);
           lcd.print("Set point: ");
-          lcd.setCursor(14, 0);
+          lcd.setCursor(12, 0);
           lcd.print(setSpeed);
           lcd.print(setTemp);
           lcd.setCursor(0, 1);
@@ -954,7 +954,7 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double currentTime;
 
   double kp = 10; //8
-  double ki = 0.05; //0.005
+  double ki = 0.01; //0.03 
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
