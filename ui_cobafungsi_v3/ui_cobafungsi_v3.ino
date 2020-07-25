@@ -101,7 +101,7 @@ bool IsRun_PWMCalculator = RUNNING;
 #define PRIORITY_TASK_PAUSE           1
 #define PRIORITY_TASK_PWMCalculator   2
 #define PRIORITY_TASK_INPUT           3
-#define PRIORITY_TASK_SPEEDREAD       3
+#define PRIORITY_TASK_SPEEDREAD       4
 #define PRIORITY_TASK_PMNS            4
 
 /*---------------------------------------------------------------------*/
@@ -661,16 +661,16 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
   pinMode(encoderMotor, INPUT_PULLUP);
   attachInterrupt(encoderMotor, updateEncoderMotor, CHANGE);
 
-  // TickType_t xLastWakeTimeSpeedRead;
-  // const TickType_t xFrequency = 20;   // program will run every 20ms
+  TickType_t xLastWakeTimeSpeedRead;
+  const TickType_t xFrequency = 20;   // program will run every 20ms
 
-  // vTaskControl(NULL, &IsRun_SpeedRead_rpm, SUSPEND);
+  vTaskControl(NULL, &IsRun_SpeedRead_rpm, SUSPEND);
 
 
   // Initialise the xLastWakeTime variable with the current time.
-  // xLastWakeTimeSpeedRead = xTaskGetTickCount();
+  xLastWakeTimeSpeedRead = xTaskGetTickCount();
   for (;;) {  // A Task shall never return or exit.
-    // vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
+    vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
 
     // motor use gear ratio 1 : 46.8512
     // gear pulley system using gear ratio 20 : 36 = 1,8
@@ -690,8 +690,6 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     // speed from slow speed gear
     float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
-
-    vTaskDelay(20);       
 
     // Serial.println("Task Speed Read");
     //  printMotorInfo();
