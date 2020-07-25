@@ -239,8 +239,8 @@ void setup() {
     STACK_SIZE_SPEEDREAD,     /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
-    &TaskHandle_SpeadRead,
-    0);  /* Task handle. */
+    &TaskHandle_SpeadRead,    /* Task handle. */
+    0);  
 
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
