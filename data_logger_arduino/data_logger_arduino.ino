@@ -14,14 +14,15 @@
 #define RXs 2
 #define TXs 3
 
-#define BRATE 57600
+#define BRATE 9600
 
 SoftwareSerial mySerial(RXs, TXs); // RX, TX
 File myFile;
 
-String FilenameCreate(int version){
+String FilenameCreate(int version) {
   return ("Datalog" + String(version) + ".csv");
 }
+String filename;
 
 void setup()
 {
@@ -33,50 +34,55 @@ void setup()
     Serial.println("SD INIT FAILED");
     while (1);
   }
+  Serial.println("SD INIT OK");
 
-  //Filename SET
+  //Find filename
   uint8_t logversion = 0;
-
-  String filename = "datalog" + String(logversion) + ".csv";
+  filename = FilenameCreate(logversion);
   while (SD.exists(filename)) {
     logversion++;
-    filename = "dtlog" + String(logversion) + ".csv";
+    filename = FilenameCreate(logversion);
   }
   Serial.println("Data log created: " + filename);
 
   myFile = SD.open(filename, FILE_WRITE);
 
-  Serial.println("Data logger running");
+  if (myFile) {
+    Serial.println("file ERROR");
+    while (1);
+  }
 
-  readFromSD(filename);
+  Serial.println("Data logger running");
 }
+
+String datain;
 
 void loop() // run over and over
 {
   if (mySerial.available()) {
-    String datain;
     datain = (mySerial.readStringUntil('\n'));
     Serial.println("arduino;" + datain);
-    myFile.println(datain);
+    myFile.print(datain);
+    myFile.flush();
   }
 }
 
 
-void readFromSD(String filename) {
-  File sdfile;
-  sdfile = SD.open(filename);
+// void readFromSD(String filename) {
+//   File sdfile;
+//   sdfile = SD.open(filename);
 
-  if (sdfile) {
-    Serial.println("Opening " + filename + " success");
+//   if (sdfile) {
+//     Serial.println("Opening " + filename + " success");
 
-    //Read per character
-    while (sdfile.available()) {
-      Serial.write(sdfile.read());
-    }
-    sdfile.close();
-  }
-  else {
-    Serial.println("ERROR opening " + filename + "!");
-    return;
-  }
-}
+//     //Read per character
+//     while (sdfile.available()) {
+//       Serial.write(sdfile.read());
+//     }
+//     sdfile.close();
+//   }
+//   else {
+//     Serial.println("ERROR opening " + filename + "!");
+//     return;
+//   }
+// }
