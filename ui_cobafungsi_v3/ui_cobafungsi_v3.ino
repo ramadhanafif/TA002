@@ -240,7 +240,7 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
     &TaskHandle_SpeadRead,    /* Task handle. */
-    0);  
+    0);
 
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
@@ -259,7 +259,7 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_PWMCalculator,          /* Priority of the task. */
     &TaskHandle_PWMCalculator,            /* Task handle. */
-    0);          
+    0);
 
   xTaskCreate(
     taskInput,                /* Task function. */
@@ -284,6 +284,14 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_PAUSE,                        /* Priority of the task. */
     &TaskHandle_Pause);       /* Task handle. */
+
+  // xTaskCreate(
+  //   taskDisplay,                /* Task function. */
+  //   "TaskPause",              /* String with name of task. */
+  //   2048,         /* Stack size in bytes. */
+  //   NULL,                     /* Parameter passed as input of the task */
+  //   10,                        /* Priority of the task. */
+  //   NULL);       /* Task handle. */
 
   taskDisplay(NULL);
   // vTaskControl(TaskHandle_SpeadRead,&IsRun_SpeedRead_rpm,SUSPEND);
@@ -314,10 +322,14 @@ void taskInput( void * parameter )
   pinMode(switchPinBlack, INPUT_PULLUP);
 
   vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
-  
+
   for ( ; ; ) {
-    // push button action
+
     currentButtonStateGreen = digitalRead(switchPinGreen);
+    currentButtonStateBlack = digitalRead(switchPinBlack);
+    currentButtonStateWhite = digitalRead(switchPinWhite);
+
+    // push button action
     vTaskDelay(10);
     if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
       //button is not being pushed
@@ -328,10 +340,7 @@ void taskInput( void * parameter )
       encoderValue = constantEncoderVal;
       forward = 1;
     }
-    lastButtonStateGreen = currentButtonStateGreen;
 
-    currentButtonStateBlack = digitalRead(switchPinBlack);
-    vTaskDelay(10);
     if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
       //button is not being pushed
       //do nothing
@@ -341,10 +350,7 @@ void taskInput( void * parameter )
       encoderValue = constantEncoderVal;
       forward = 0;
     }
-    lastButtonStateBlack = currentButtonStateBlack;
 
-    currentButtonStateWhite = digitalRead(switchPinWhite);
-    vTaskDelay(10);
     if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
       //button is not being pushed
       //do nothing
@@ -356,11 +362,11 @@ void taskInput( void * parameter )
       kecepatan = kecConstant;
       jam = jamConstant;
       menit = menConstant;
-      //encoderValue = constantEncoderVal;
     }
-    lastButtonStateWhite = currentButtonStateWhite;
 
-    // Serial.println("Task Input");
+    lastButtonStateGreen = currentButtonStateGreen;
+    lastButtonStateBlack = currentButtonStateBlack;
+    lastButtonStateWhite = currentButtonStateWhite;
   }
 }
 
@@ -478,7 +484,7 @@ void taskDisplay( void * parameter)
       case STATE_PANAS_AWAL: {
           // !!!!! buat bypass aja !!!!!
           // stateCondition++;
-          
+
           // print frame for loading bar
           // lcd.createChar(1, frame[0]);        // frame right
           // lcd.createChar(2, frame[1]);        // frame bottom
@@ -558,7 +564,7 @@ void taskDisplay( void * parameter)
       case STATE_START_ROT: {
           if (!flagForClearLCD) {
             lcd.clear();
-            flagForClearLCD = 1; 
+            flagForClearLCD = 1;
           }
 
           // buffer variable
@@ -573,11 +579,11 @@ void taskDisplay( void * parameter)
           sprintf(tempActual, "%3d", int(TempRead));
           sprintf(speedActual, "%3d", int(MTR_speed_actual));
           sprintf(setTemp, "%3d", temperatur);
-          sprintf(setSpeed, "%3d", kecepatan);          
+          sprintf(setSpeed, "%3d", kecepatan);
           //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
           //sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
-          
-          if (counter >=10){
+
+          if (counter >= 10) {
             lcd.setCursor(0, 0);
             lcd.print("Set point: ");
             lcd.setCursor(12, 0);
@@ -588,7 +594,7 @@ void taskDisplay( void * parameter)
             lcd.setCursor(14, 1);
             lcd.print(speedActual);
             lcd.setCursor(0, 2);
-            lcd.print("Suhu actual: ");            
+            lcd.print("Suhu actual: ");
             // lcd.setCursor(14, 2);
             // lcd.print(tempActual);
             // lcd.setCursor(0, 3);
@@ -598,7 +604,7 @@ void taskDisplay( void * parameter)
             // lcd.print(minuteLeft);
 
             counter = 0;
-            
+
           } else {
             counter++;
           }
@@ -630,7 +636,7 @@ void taskDisplay( void * parameter)
           }
         } break;
     }
-    vTaskDelay(100);
+    vTaskDelay(1000);
   }
 }
 
@@ -703,7 +709,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
 
-    // vTaskDelay(20);       
+    // vTaskDelay(20);
 
     // Serial.println("Task Speed Read");
     //  printMotorInfo();
@@ -825,7 +831,7 @@ void taskPrint(void* v) {
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
     sprintf(data, "%d,%d,%d, %d,%f,%d,%f,%u,%u,%d",
-            stateCondition,PMNS_ssr,PMNS_counter,
+            stateCondition, PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
             durasi, timerCounter, MTR_PWM_val);
@@ -972,7 +978,7 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double currentTime;
 
   double kp = 10; //8
-  double ki = 0.01; //0.03 
+  double ki = 0.01; //0.03
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
