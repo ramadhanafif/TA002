@@ -314,6 +314,7 @@ void taskInput( void * parameter )
   pinMode(switchPinBlack, INPUT_PULLUP);
 
   vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
+  
   for ( ; ; ) {
     // push button action
     currentButtonStateGreen = digitalRead(switchPinGreen);
