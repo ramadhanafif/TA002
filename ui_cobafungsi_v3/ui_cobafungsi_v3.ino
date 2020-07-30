@@ -240,7 +240,7 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
     &TaskHandle_SpeadRead,    /* Task handle. */
-    0);  
+    0);
 
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
@@ -259,7 +259,7 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_PWMCalculator,          /* Priority of the task. */
     &TaskHandle_PWMCalculator,            /* Task handle. */
-    0);          
+    0);
 
   xTaskCreate(
     taskInput,                /* Task function. */
@@ -285,7 +285,15 @@ void setup() {
     PRIORITY_TASK_PAUSE,                        /* Priority of the task. */
     &TaskHandle_Pause);       /* Task handle. */
 
-  taskDisplay(NULL);
+  xTaskCreatePinnedToCore(
+    taskDisplay,                /* Task function. */
+    "TaskPDs",              /* String with name of task. */
+    STACK_SIZE_PAUSE,         /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    10,                        /* Priority of the task. */
+    NULL, 0);      /* Task handle. */
+
+  //  taskDisplay(NULL);
   // vTaskControl(TaskHandle_SpeadRead,&IsRun_SpeedRead_rpm,SUSPEND);
   // vTaskSuspend(TaskHandle_Input);
   // vTaskSuspend(TaskHandle_Pause);
@@ -297,7 +305,7 @@ void setup() {
 /*-------------------------------LOOP----------------------------------*/
 /*---------------------------------------------------------------------*/
 void loop() {
-  // vTaskDelay(portMAX_DELAY);
+  vTaskDelay(10000);
 }
 
 
@@ -477,7 +485,7 @@ void taskDisplay( void * parameter)
       case STATE_PANAS_AWAL: {
           // !!!!! buat bypass aja !!!!!
           // stateCondition++;
-          
+
           // print frame for loading bar
           // lcd.createChar(1, frame[0]);        // frame right
           // lcd.createChar(2, frame[1]);        // frame bottom
@@ -557,7 +565,7 @@ void taskDisplay( void * parameter)
       case STATE_START_ROT: {
           if (!flagForClearLCD) {
             lcd.clear();
-            flagForClearLCD = 1; 
+            flagForClearLCD = 1;
           }
 
           // buffer variable
@@ -572,11 +580,11 @@ void taskDisplay( void * parameter)
           sprintf(tempActual, "%3d", int(TempRead));
           sprintf(speedActual, "%3d", int(MTR_speed_actual));
           sprintf(setTemp, "%3d", temperatur);
-          sprintf(setSpeed, "%3d", kecepatan);          
+          sprintf(setSpeed, "%3d", kecepatan);
           //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
           //sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
-          
-          if (counter >=10){
+
+          if (counter >= 10) {
             lcd.setCursor(0, 0);
             lcd.print("Set point: ");
             lcd.setCursor(12, 0);
@@ -587,7 +595,7 @@ void taskDisplay( void * parameter)
             lcd.setCursor(14, 1);
             lcd.print(speedActual);
             lcd.setCursor(0, 2);
-            lcd.print("Suhu actual: ");            
+            lcd.print("Suhu actual: ");
             // lcd.setCursor(14, 2);
             // lcd.print(tempActual);
             // lcd.setCursor(0, 3);
@@ -597,7 +605,7 @@ void taskDisplay( void * parameter)
             // lcd.print(minuteLeft);
 
             counter = 0;
-            
+
           } else {
             counter++;
           }
@@ -702,7 +710,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
 
-    // vTaskDelay(20);       
+    // vTaskDelay(20);
 
     // Serial.println("Task Speed Read");
     //  printMotorInfo();
@@ -824,7 +832,7 @@ void taskPrint(void* v) {
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
     sprintf(data, "%d,%d,%d, %d,%f,%d,%f,%u,%u,%d",
-            stateCondition,PMNS_ssr,PMNS_counter,
+            stateCondition, PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
             durasi, timerCounter, MTR_PWM_val);
@@ -971,7 +979,7 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double currentTime;
 
   double kp = 10; //8
-  double ki = 0.01; //0.03 
+  double ki = 0.01; //0.03
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
