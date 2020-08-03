@@ -285,15 +285,16 @@ void setup() {
     PRIORITY_TASK_PAUSE,                        /* Priority of the task. */
     &TaskHandle_Pause);       /* Task handle. */
 
-  // xTaskCreate(
-  //   taskDisplay,                /* Task function. */
-  //   "TaskPause",              /* String with name of task. */
-  //   2048,         /* Stack size in bytes. */
-  //   NULL,                     /* Parameter passed as input of the task */
-  //   10,                        /* Priority of the task. */
-  //   NULL);       /* Task handle. */
 
-  taskDisplay(NULL);
+  xTaskCreatePinnedToCore(
+    taskDisplay,                /* Task function. */
+    "TaskPDs",              /* String with name of task. */
+    STACK_SIZE_PAUSE,         /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    10,                        /* Priority of the task. */
+    NULL, 0);      /* Task handle. */
+
+  //  taskDisplay(NULL);
   // vTaskControl(TaskHandle_SpeadRead,&IsRun_SpeedRead_rpm,SUSPEND);
   // vTaskSuspend(TaskHandle_Input);
   // vTaskSuspend(TaskHandle_Pause);
@@ -305,7 +306,7 @@ void setup() {
 /*-------------------------------LOOP----------------------------------*/
 /*---------------------------------------------------------------------*/
 void loop() {
-  // vTaskDelay(portMAX_DELAY);
+  vTaskDelay(10000);
 }
 
 

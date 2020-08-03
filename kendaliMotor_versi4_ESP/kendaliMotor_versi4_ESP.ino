@@ -4,8 +4,8 @@
 // include library Kalman Filter
 #include "SimpleKalmanFilter.h"
 
-#define pwm 5 
-#define encoderMotor 2
+#define pwm 18 
+#define encoderMotor 17
 
 // setting PWM properties
 const int freq = 256000;
@@ -13,11 +13,11 @@ const int pwmChannel = 0;
 const int resolution = 8;
 
 // PID controller
-int speed_req = 65;    // in rpm
+int speed_req = 27;    // in rpm
 float speed_actual = 0;   // in rpm
-double Kp = 12;
-double Kd = 12;
-double Ki = 0.7;
+double Kp = 5;
+double Kd = 0.5;
+double Ki = 0.1;
 float error = 0;
 float last_error = 0;
 float sum_error = 0;
@@ -86,7 +86,7 @@ void TaskPWMCalculator(void *pvParameters)  // This is a task.
     {
         // PID calculation
         error = speed_req - speed_actual;
-        pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki;
+        pidTerm = (Kp * error) + (Kd * (error - last_error)) + sum_error * Ki + 120;
         last_error = error;
         sum_error += error;
         sum_error = constrain(sum_error, -2000, 2000);
@@ -124,7 +124,7 @@ void TaskSpeedRead_rpm(void *pvParameters)  // This is a task.
         real_valueRPS = simpleKalmanFilter.updateEstimate(real_valueRPS);
 
         // speed from slow speed gear
-        float real_valueRPM = (real_valueRPS / 46.8512) * 60;
+        float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
         speed_actual = real_valueRPM;
         Serial.print(speed_req);
         Serial.print(" ");
