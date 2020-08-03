@@ -285,7 +285,6 @@ void setup() {
     PRIORITY_TASK_PAUSE,                        /* Priority of the task. */
     &TaskHandle_Pause);       /* Task handle. */
 
-
   xTaskCreatePinnedToCore(
     taskDisplay,                /* Task function. */
     "TaskPDs",              /* String with name of task. */
@@ -323,14 +322,9 @@ void taskInput( void * parameter )
   pinMode(switchPinBlack, INPUT_PULLUP);
 
   vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
-
   for ( ; ; ) {
-
-    currentButtonStateGreen = digitalRead(switchPinGreen);
-    currentButtonStateBlack = digitalRead(switchPinBlack);
-    currentButtonStateWhite = digitalRead(switchPinWhite);
-
     // push button action
+    currentButtonStateGreen = digitalRead(switchPinGreen);
     vTaskDelay(10);
     if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
       //button is not being pushed
@@ -341,7 +335,10 @@ void taskInput( void * parameter )
       encoderValue = constantEncoderVal;
       forward = 1;
     }
+    lastButtonStateGreen = currentButtonStateGreen;
 
+    currentButtonStateBlack = digitalRead(switchPinBlack);
+    vTaskDelay(10);
     if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
       //button is not being pushed
       //do nothing
@@ -351,7 +348,10 @@ void taskInput( void * parameter )
       encoderValue = constantEncoderVal;
       forward = 0;
     }
+    lastButtonStateBlack = currentButtonStateBlack;
 
+    currentButtonStateWhite = digitalRead(switchPinWhite);
+    vTaskDelay(10);
     if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
       //button is not being pushed
       //do nothing
@@ -363,11 +363,11 @@ void taskInput( void * parameter )
       kecepatan = kecConstant;
       jam = jamConstant;
       menit = menConstant;
+      //encoderValue = constantEncoderVal;
     }
-
-    lastButtonStateGreen = currentButtonStateGreen;
-    lastButtonStateBlack = currentButtonStateBlack;
     lastButtonStateWhite = currentButtonStateWhite;
+
+    // Serial.println("Task Input");
   }
 }
 
@@ -637,7 +637,7 @@ void taskDisplay( void * parameter)
           }
         } break;
     }
-    vTaskDelay(1000);
+    vTaskDelay(100);
   }
 }
 
