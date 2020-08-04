@@ -913,8 +913,8 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 5; //8
-  double ki = 0.005; //0.03
+  double kp = 12; //8
+  double ki = 0.003; //0.03
 
   currentTime = millis() / 1000;                      // get current time
   elapsedTime = (currentTime - *previousTime);        // compute time elapsed from previous computation
