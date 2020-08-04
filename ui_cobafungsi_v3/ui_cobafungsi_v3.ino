@@ -708,7 +708,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     real_valueRPS = simpleKalmanFilter.updateEstimate(real_valueRPS);
 
     // speed from slow speed gear
-    float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
+    float real_valueRPM = (real_valueRPS / (1 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
 
     // vTaskDelay(20);
