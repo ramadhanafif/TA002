@@ -103,6 +103,7 @@ bool IsRun_PWMCalculator = RUNNING;
 #define PRIORITY_TASK_INPUT           3
 #define PRIORITY_TASK_SPEEDREAD       5
 #define PRIORITY_TASK_PMNS            4
+#define PRIORITY_TASK_DISPLAY         5
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -286,15 +287,15 @@ void setup() {
     &TaskHandle_Pause);       /* Task handle. */
 
 
-  xTaskCreatePinnedToCore(
+  xTaskCreate(
     taskDisplay,                /* Task function. */
     "TaskPDs",              /* String with name of task. */
     STACK_SIZE_PAUSE,         /* Stack size in bytes. */
     NULL,                     /* Parameter passed as input of the task */
-    10,                        /* Priority of the task. */
-    NULL, 0);      /* Task handle. */
+    PRIORITY_TASK_DISPLAY,                        /* Priority of the task. */
+    NULL);      /* Task handle. */
 
-  //  taskDisplay(NULL);
+  // taskDisplay(NULL);
   // vTaskControl(TaskHandle_SpeadRead,&IsRun_SpeedRead_rpm,SUSPEND);
   // vTaskSuspend(TaskHandle_Input);
   // vTaskSuspend(TaskHandle_Pause);
