@@ -53,8 +53,8 @@
 
 #define BB 0
 
-#define PMNS_WAIT_TIME        45
-#define PMNS_ON_TIME          20
+#define PMNS_WAIT_TIME        15
+#define PMNS_ON_TIME          40
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
@@ -707,7 +707,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     real_valueRPS = simpleKalmanFilter.updateEstimate(real_valueRPS);
 
     // speed from slow speed gear
-    float real_valueRPM = (real_valueRPS / (1.8 * 46.8512)) * 60;
+    float real_valueRPM = (real_valueRPS / (1 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
 
     // vTaskDelay(20);
@@ -978,8 +978,8 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 10; //8
-  double ki = 0.01; //0.03
+  double kp = 12; //8
+  double ki = 0.003; //0.03
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
