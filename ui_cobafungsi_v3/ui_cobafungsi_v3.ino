@@ -103,7 +103,7 @@ bool IsRun_PWMCalculator = RUNNING;
 #define PRIORITY_TASK_INPUT           3
 #define PRIORITY_TASK_SPEEDREAD       5
 #define PRIORITY_TASK_PMNS            4
-#define PRIORITY_TASK_DISPLAY         6
+#define PRIORITY_TASK_DISPLAY         10
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -597,9 +597,9 @@ void taskDisplay( void * parameter)
             lcd.print(speedActual);
             lcd.setCursor(0, 2);
             lcd.print("Suhu actual: ");
-            // lcd.setCursor(14, 2);
-            // lcd.print(tempActual);
-            // lcd.setCursor(0, 3);
+            lcd.setCursor(14, 2);
+            lcd.print(tempActual);
+            lcd.setCursor(0, 3);
             // lcd.print("Sisa waktu : ");
             // lcd.setCursor(14, 3);
             // lcd.print(hourLeft);
