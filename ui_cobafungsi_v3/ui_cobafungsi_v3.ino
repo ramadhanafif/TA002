@@ -948,7 +948,7 @@ void updateEncoderMotor() {
 
 // interrupt when any change happen
 void updateEncoder() {
-  int MSB = digitalRead(encoderPin1); //MSB = most significant bit
+  int MSB = digitalRead(encoderPin1); //MSB = most significant bit 
   int LSB = digitalRead(encoderPin2); //LSB = least significant bit
   int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
   int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
@@ -979,8 +979,8 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 10; //8
-  double ki = 0.01; //0.03
+  double kp = 5; //8
+  double ki = 0.005; //0.03
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
