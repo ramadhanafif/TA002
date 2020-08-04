@@ -103,7 +103,7 @@ bool IsRun_PWMCalculator = RUNNING;
 #define PRIORITY_TASK_INPUT           3
 #define PRIORITY_TASK_SPEEDREAD       5
 #define PRIORITY_TASK_PMNS            4
-#define PRIORITY_TASK_DISPLAY         5
+#define PRIORITY_TASK_DISPLAY         6
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -638,7 +638,7 @@ void taskDisplay( void * parameter)
           }
         } break;
     }
-    vTaskDelay(1000);
+    vTaskDelay(500);
   }
 }
 
