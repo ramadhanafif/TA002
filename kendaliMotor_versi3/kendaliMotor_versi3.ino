@@ -7,8 +7,8 @@
 // include library Median Filter
 #include "MedianFilter.h"
 
-#define pwm 11 
-#define dir1 4 
+#define pwm 19
+#define dir1 17 
 #define dir2 5
 
 // PID controller
