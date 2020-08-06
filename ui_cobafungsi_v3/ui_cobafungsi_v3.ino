@@ -60,6 +60,7 @@
 
 #define PMNS_STATE_PID  0
 #define PMNS_STATE_BANG 1
+#define PMNS_STATE_INIT 9
 
 
 #define BUZZER_PIN 32
@@ -166,7 +167,7 @@ boolean pauseState = 0;
 boolean flagForClearLCD = 0; // variable for clear the lcd at the STATE_START_ROT
 
 // PEMANAS
-unsigned int PMNS_pemanas_state = 9; //pokoknya apapun yg bukan 1 dan 0
+unsigned int PMNS_pemanas_state = PMNS_STATE_INIT; //pokoknya apapun yg bukan 1 dan 0
 unsigned int PMNS_flag_pemanas_awal_done = 0;
 double TempRead = 0;
 
@@ -499,7 +500,7 @@ void taskDisplay( void * parameter)
 
           if (PMNS_flag_pemanas_awal_done == 1) {
             stateCondition = STATE_IN_TABUNG;//STATE_START_ROT;
-            PMNS_pemanas_state = PMNS_STATE_PID; //INI YG BIKIN MASUK BGBG
+            PMNS_pemanas_state = PMNS_STATE_PID;
           }
         } break;
       case STATE_IN_TABUNG:{
