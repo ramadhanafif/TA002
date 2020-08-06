@@ -100,7 +100,6 @@ bool IsRun_PWMCalculator = RUNNING;
 #define STACK_SIZE_PMNS           2024
 #define STACK_SIZE_DISPLAY        1024*4
 
-
 #define PRIORITY_TASK_PAUSE           1
 #define PRIORITY_TASK_PWMCalculator   2
 #define PRIORITY_TASK_INPUT           3
@@ -233,7 +232,6 @@ void setup() {
     PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
     &TaskHandle_SpeadRead);   /* Task handle. */
 
-
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
     taskPrint,                /* Task function. */
@@ -311,9 +309,7 @@ void taskInput( void * parameter )
   for ( ; ; ) {
     // push button action
     vTaskDelay(90);
-
     currentButtonStateGreen = digitalRead(switchPinGreen);
-
     if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
       //button is not being pushed
       //do nothing
@@ -326,7 +322,6 @@ void taskInput( void * parameter )
     lastButtonStateGreen = currentButtonStateGreen;
 
     currentButtonStateBlack = digitalRead(switchPinBlack);
-    // vTaskDelay(10);
     if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
       //button is not being pushed
       //do nothing
@@ -339,7 +334,7 @@ void taskInput( void * parameter )
     lastButtonStateBlack = currentButtonStateBlack;
 
     currentButtonStateWhite = digitalRead(switchPinWhite);
-    // vTaskDelay(10);
+
     if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
       //button is not being pushed
       //do nothing
@@ -354,6 +349,8 @@ void taskInput( void * parameter )
       //encoderValue = constantEncoderVal;
     }
     lastButtonStateWhite = currentButtonStateWhite;
+
+    // Serial.println("Task Input");
   }
 }
 
