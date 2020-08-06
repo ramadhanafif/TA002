@@ -554,10 +554,11 @@ void taskDisplay( void * parameter)
 
           BaseType_t xReturned;
           // TaskHandle_t xHandle = NULL;
+          
 
           if (xReturned != pdPASS)
             xReturned = xTaskCreate(ringBuzzer, "Ring Buzzer", 800, (void *) 3, 5, NULL);
-
+          // xTaskCreate(ringBuzzer, "Ring Buzzer", STACK SIZE, (void *) JUMLAH LOOP BUZZER, PRIORITY, NULL);
           if (flagGreenButton) {
             stateCondition = STATE_WAIT_TEMP_STEADY;
             flagGreenButton = LOW;
