@@ -467,7 +467,7 @@ void taskDisplay( void * parameter)
         } break;
       case STATE_PANAS_AWAL: {
           // !!!!! buat bypass aja !!!!!
-          // stateCondition++;
+          stateCondition++;
 
           // buffer variable
           char bufferForPrintTemp[4];
