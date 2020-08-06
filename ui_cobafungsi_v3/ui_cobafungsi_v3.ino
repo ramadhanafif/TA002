@@ -53,8 +53,8 @@
 
 #define BB 0
 
-#define PMNS_WAIT_TIME        45
-#define PMNS_ON_TIME          20
+#define PMNS_WAIT_TIME        15
+#define PMNS_ON_TIME          40
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
@@ -103,7 +103,6 @@ bool IsRun_PWMCalculator = RUNNING;
 #define PRIORITY_TASK_INPUT           3
 #define PRIORITY_TASK_SPEEDREAD       5
 #define PRIORITY_TASK_PMNS            4
-#define PRIORITY_TASK_DISPLAY         6
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -184,12 +183,28 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature sensor(&oneWire);
 
-
 /*---------------------------------------------------------------------*/
 /*-----------------------------CHAR LIBS-------------------------------*/
 /*---------------------------------------------------------------------*/
 // create arrow char
 byte arrow[8] = {0x03, 0x07, 0x0F, 0x1F, 0x0F, 0x07, 0x03, 0x00};
+
+// create char for loading bar
+byte loadingBar[5][8] = {
+  {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10},
+  {0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18},
+  {0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C},
+  {0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E},
+  {0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F}
+};
+
+// create frame for loading bar
+byte frame[4][8] = {
+  {0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01},
+  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F},
+  {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10},
+  {0x1F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+};
 
 
 /*---------------------------------------------------------------------*/
@@ -219,66 +234,66 @@ void setup() {
   timerAlarmWrite(timer, 1000000, true);
 
   xTaskCreatePinnedToCore(
-    taskSpeedRead_rpm,          /* Task function. */
-    "SpeedRead_rpm",            /* String with name of task. */
-    STACK_SIZE_SPEEDREAD,       /* Stack size in bytes. */
-    NULL,                       /* Parameter passed as input of the task */
-    PRIORITY_TASK_SPEEDREAD,    /* Priority of the task. */
-    &TaskHandle_SpeadRead,      /* Task handle. */
+    taskSpeedRead_rpm,        /* Task function. */
+    "SpeedRead_rpm",          /* String with name of task. */
+    STACK_SIZE_SPEEDREAD,     /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
+    &TaskHandle_SpeadRead,    /* Task handle. */
     0);
 
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
-    taskPrint,                  /* Task function. */
-    "printing",                 /* String with name of task. */
-    2024,                       /* Stack size in bytes. */
-    NULL,                       /* Parameter passed as input of the task */
-    1,                          /* Priority of the task. */
-    NULL );                     /* Task handle. */
+    taskPrint,                /* Task function. */
+    "printing",               /* String with name of task. */
+    2024,                     /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    1,                        /* Priority of the task. */
+    NULL );                   /* Task handle. */
 #endif
 
   xTaskCreatePinnedToCore(
-    taskPWMCalculator,          /* Task function. */
-    "PWMCalculator",            /* String with name of task. */
-    STACK_SIZE_PWMCalculator,   /* Stack size in bytes. */
-    NULL,                       /* Parameter passed as input of the task */
-    PRIORITY_TASK_PWMCalculator,/* Priority of the task. */
-    &TaskHandle_PWMCalculator,  /* Task handle. */
+    taskPWMCalculator,        /* Task function. */
+    "PWMCalculator",          /* String with name of task. */
+    STACK_SIZE_PWMCalculator, /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    PRIORITY_TASK_PWMCalculator,          /* Priority of the task. */
+    &TaskHandle_PWMCalculator,            /* Task handle. */
     0);
 
   xTaskCreate(
-    taskInput,                  /* Task function. */
-    "TaskInput",                /* String with name of task. */
-    STACK_SIZE_INPUT,           /* Stack size in bytes. */
-    NULL,                       /* Prameter passed as input of the task */
-    PRIORITY_TASK_INPUT,        /* Priority of the task. */
-    &TaskHandle_Input);         /* Task handle. */
+    taskInput,                /* Task function. */
+    "TaskInput",              /* String with name of task. */
+    STACK_SIZE_INPUT,                    /* Stack size in bytes. */
+    NULL,                     /* Prameter passed as input of the task */
+    PRIORITY_TASK_INPUT,                        /* Priority of the task. */
+    &TaskHandle_Input);       /* Task handle. */
 
   xTaskCreate(
-    taskPMNS_MAIN,              /* Task function. */
-    "taskPMNS_MAIN",            /* String with name of task. */
-    STACK_SIZE_PMNS,            /* Stack size in bytes. */
-    NULL,                       /* Parameter passed as input of the task */
-    PRIORITY_TASK_PMNS,         /* Priority of the task. */
+    taskPMNS_MAIN,                 /* Task function. */
+    "taskPMNS_MAIN",               /* String with name of task. */
+    STACK_SIZE_PMNS,                    /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    PRIORITY_TASK_PMNS,                        /* Priority of the task. */
     &TaskHandle_PMNS);
 
   xTaskCreate(
-    taskPause,                  /* Task function. */
-    "TaskPause",                /* String with name of task. */
-    STACK_SIZE_PAUSE,           /* Stack size in bytes. */
-    NULL,                       /* Parameter passed as input of the task */
-    PRIORITY_TASK_PAUSE,        /* Priority of the task. */
-    &TaskHandle_Pause);         /* Task handle. */
+    taskPause,                /* Task function. */
+    "TaskPause",              /* String with name of task. */
+    STACK_SIZE_PAUSE,         /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    PRIORITY_TASK_PAUSE,                        /* Priority of the task. */
+    &TaskHandle_Pause);       /* Task handle. */
 
   xTaskCreatePinnedToCore(
     taskDisplay,                /* Task function. */
-    "TaskPDs",                  /* String with name of task. */
-    STACK_SIZE_PAUSE,           /* Stack size in bytes. */
-    NULL,                       /* Parameter passed as input of the task */
-    PRIORITY_TASK_DISPLAY,      /* Priority of the task. */
-    NULL, 0);                   /* Task handle. */
+    "TaskPDs",              /* String with name of task. */
+    STACK_SIZE_PAUSE,         /* Stack size in bytes. */
+    NULL,                     /* Parameter passed as input of the task */
+    10,                        /* Priority of the task. */
+    NULL, 0);      /* Task handle. */
 
-  // taskDisplay(NULL);
+  //  taskDisplay(NULL);
   // vTaskControl(TaskHandle_SpeadRead,&IsRun_SpeedRead_rpm,SUSPEND);
   // vTaskSuspend(TaskHandle_Input);
   // vTaskSuspend(TaskHandle_Pause);
@@ -307,14 +322,9 @@ void taskInput( void * parameter )
   pinMode(switchPinBlack, INPUT_PULLUP);
 
   vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
-
   for ( ; ; ) {
-
-    currentButtonStateGreen = digitalRead(switchPinGreen);
-    currentButtonStateBlack = digitalRead(switchPinBlack);
-    currentButtonStateWhite = digitalRead(switchPinWhite);
-
     // push button action
+    currentButtonStateGreen = digitalRead(switchPinGreen);
     vTaskDelay(10);
     if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
       //button is not being pushed
@@ -325,7 +335,10 @@ void taskInput( void * parameter )
       encoderValue = constantEncoderVal;
       forward = 1;
     }
+    lastButtonStateGreen = currentButtonStateGreen;
 
+    currentButtonStateBlack = digitalRead(switchPinBlack);
+    vTaskDelay(10);
     if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
       //button is not being pushed
       //do nothing
@@ -335,7 +348,10 @@ void taskInput( void * parameter )
       encoderValue = constantEncoderVal;
       forward = 0;
     }
+    lastButtonStateBlack = currentButtonStateBlack;
 
+    currentButtonStateWhite = digitalRead(switchPinWhite);
+    vTaskDelay(10);
     if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
       //button is not being pushed
       //do nothing
@@ -347,11 +363,11 @@ void taskInput( void * parameter )
       kecepatan = kecConstant;
       jam = jamConstant;
       menit = menConstant;
+      //encoderValue = constantEncoderVal;
     }
-
-    lastButtonStateGreen = currentButtonStateGreen;
-    lastButtonStateBlack = currentButtonStateBlack;
     lastButtonStateWhite = currentButtonStateWhite;
+
+    // Serial.println("Task Input");
   }
 }
 
@@ -470,6 +486,25 @@ void taskDisplay( void * parameter)
           // !!!!! buat bypass aja !!!!!
           // stateCondition++;
 
+          // print frame for loading bar
+          // lcd.createChar(1, frame[0]);        // frame right
+          // lcd.createChar(2, frame[1]);        // frame bottom
+          // lcd.createChar(3, frame[2]);        // frame left
+          // lcd.createChar(4, frame[3]);        // frame top
+
+          // lcd.setCursor(1, 1);
+          // for (int i = 0; i < 18; i++) {
+          //   lcd.write(byte(2));
+          // }
+          // lcd.setCursor(0, 2);
+          // lcd.write(byte(1));
+          // lcd.setCursor(19, 2);
+          // lcd.write(byte(3));
+          // lcd.setCursor(1, 3);
+          // for (int i = 0; i < 18; i++) {
+          //   lcd.write(byte(4));
+          // }
+
           // buffer variable
           char bufferForPrintTemp[4];
           char bufferForprintTempRead[4];
@@ -477,6 +512,7 @@ void taskDisplay( void * parameter)
           // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
           sprintf(bufferForprintTempRead, "%3d", int(TempRead));
+
 
           lcd.setCursor(0, 0);
           lcd.print("Memanaskan");
@@ -489,6 +525,7 @@ void taskDisplay( void * parameter)
           lcd.setCursor(14, 2);
           lcd.print(bufferForprintTempRead);
 
+
           //PERINTAH PANAS MASUK SINI
           vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
           PMNS_pemanas_state = PMNS_STATE_START;
@@ -498,6 +535,32 @@ void taskDisplay( void * parameter)
             PMNS_pemanas_state = PMNS_STATE_STEADY;
             // percent = 100;
           }
+
+          // // calculation from sensor read
+          // vTaskDelay(10);
+          // value += 1;
+          // value = constrain(value, 0, 99);
+
+          // if (value == 99) {
+          //   stateCondition++;
+          //   value = 0;
+          // }
+
+          // Serial.print(TempRead); Serial.print(" ");
+          // Serial.println(percent);
+
+          // drawing charater's colums
+          // if (piece == 0) {
+          //   lcd.write(byte(1));
+          // } else if (piece == 1) {
+          //   lcd.write(byte(2));
+          // } else if (piece == 2) {
+          //   lcd.write(byte(3));
+          // } else if (piece == 3) {
+          //   lcd.write(byte(4));
+          // } else {
+          //   lcd.write(byte(5));
+          // }
         } break;
       case STATE_START_ROT: {
           if (!flagForClearLCD) {
@@ -521,7 +584,7 @@ void taskDisplay( void * parameter)
           //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
           //sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
 
-          if (counter >= 4) {
+          if (counter >= 10) {
             lcd.setCursor(0, 0);
             lcd.print("Set point: ");
             lcd.setCursor(12, 0);
@@ -533,14 +596,16 @@ void taskDisplay( void * parameter)
             lcd.print(speedActual);
             lcd.setCursor(0, 2);
             lcd.print("Suhu actual: ");
-            lcd.setCursor(14, 2);
-            lcd.print(tempActual);
-            lcd.setCursor(0, 3);
+            // lcd.setCursor(14, 2);
+            // lcd.print(tempActual);
+            // lcd.setCursor(0, 3);
             // lcd.print("Sisa waktu : ");
             // lcd.setCursor(14, 3);
             // lcd.print(hourLeft);
             // lcd.print(minuteLeft);
+
             counter = 0;
+
           } else {
             counter++;
           }
@@ -572,7 +637,7 @@ void taskDisplay( void * parameter)
           }
         } break;
     }
-    vTaskDelay(500);
+    vTaskDelay(100);
   }
 }
 
@@ -645,8 +710,10 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
     float real_valueRPM = (real_valueRPS / (1 * 46.8512)) * 60;
     MTR_speed_actual = real_valueRPM;
 
+    // vTaskDelay(20);
+
     // Serial.println("Task Speed Read");
-    // printMotorInfo();
+    //  printMotorInfo();
   }
 }
 
@@ -774,8 +841,6 @@ void taskPrint(void* v) {
   }
 }
 #endif
-
-
 /*---------------------------------------------------------------------*/
 /*------------------------------FUNCTIONS------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -862,18 +927,18 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
 }
 
 // function for printing data
-// void printMotorInfo() {
-//   // Serial.print("Setpoint: ");    Serial.println(MTR_speed_req);
-//   // Serial.print("Speed RPM: ");    Serial.println(MTR_speed_actual);
-//   // Serial.print("MTR_error: ");     Serial.println(MTR_error);
-//   // Serial.print("last error: ");     Serial.println(MTR_last_error);
-//   // Serial.print("sum error: ");     Serial.println(MTR_sum_error);
-//   // Serial.print("MTR_PWM_val: ");      Serial.println(MTR_PWM_val);
-//   // Serial.print("PID Term: ");     Serial.println(MTR_MTR_pidTerm);
-//   Serial.print(MTR_speed_req);
-//   Serial.print("\t");
-//   Serial.println(MTR_speed_actual);
-// }
+void printMotorInfo() {
+  // Serial.print("Setpoint: ");    Serial.println(MTR_speed_req);
+  // Serial.print("Speed RPM: ");    Serial.println(MTR_speed_actual);
+  // Serial.print("MTR_error: ");     Serial.println(MTR_error);
+  // Serial.print("last error: ");     Serial.println(MTR_last_error);
+  // Serial.print("sum error: ");     Serial.println(MTR_sum_error);
+  // Serial.print("MTR_PWM_val: ");      Serial.println(MTR_PWM_val);
+  // Serial.print("PID Term: ");     Serial.println(MTR_MTR_pidTerm);
+  Serial.print(MTR_speed_req);
+  Serial.print("\t");
+  Serial.println(MTR_speed_actual);
+}
 
 // interrupt when any change happen
 void updateEncoderMotor() {
@@ -882,7 +947,7 @@ void updateEncoderMotor() {
 
 // interrupt when any change happen
 void updateEncoder() {
-  int MSB = digitalRead(encoderPin1); //MSB = most significant bit 
+  int MSB = digitalRead(encoderPin1); //MSB = most significant bit
   int LSB = digitalRead(encoderPin2); //LSB = least significant bit
   int encoded = (MSB << 1) | LSB; //converting the 2 pin value to single number
   int sum = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
@@ -916,17 +981,17 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double kp = 12; //8
   double ki = 0.003; //0.03
 
-  currentTime = millis() / 1000;                      // get current time
-  elapsedTime = (currentTime - *previousTime);        // compute time elapsed from previous computation
+  currentTime = millis() / 1000;                      //get current time
+  elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
 
   error = setPoint - inp;                             // determine error
   *cumError += error * elapsedTime;                   // compute integral
 
-  double out = kp * error + ki * *cumError;           // + kd * rateError;          // PID output
+  double out = kp * error + ki * *cumError;           // + kd * rateError;          //PID output
 
-  *previousTime = currentTime;                        // remember current time
+  *previousTime = currentTime;                        //remember current time
 
-  return out;                                         // have function return the PID output
+  return out;                                         //have function return the PID output
 }
 
 void vTaskControl(TaskHandle_t xHandle, bool* statusVar, unsigned int command) {
