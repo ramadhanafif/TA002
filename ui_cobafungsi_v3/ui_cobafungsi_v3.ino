@@ -469,25 +469,6 @@ void taskDisplay( void * parameter)
           // !!!!! buat bypass aja !!!!!
           stateCondition++;
 
-          // print frame for loading bar
-          // lcd.createChar(1, frame[0]);        // frame right
-          // lcd.createChar(2, frame[1]);        // frame bottom
-          // lcd.createChar(3, frame[2]);        // frame left
-          // lcd.createChar(4, frame[3]);        // frame top
-
-          // lcd.setCursor(1, 1);
-          // for (int i = 0; i < 18; i++) {
-          //   lcd.write(byte(2));
-          // }
-          // lcd.setCursor(0, 2);
-          // lcd.write(byte(1));
-          // lcd.setCursor(19, 2);
-          // lcd.write(byte(3));
-          // lcd.setCursor(1, 3);
-          // for (int i = 0; i < 18; i++) {
-          //   lcd.write(byte(4));
-          // }
-
           // buffer variable
           char bufferForPrintTemp[4];
           char bufferForprintTempRead[4];
@@ -518,32 +499,6 @@ void taskDisplay( void * parameter)
             PMNS_pemanas_state = PMNS_STATE_STEADY;
             // percent = 100;
           }
-
-          // // calculation from sensor read
-          // vTaskDelay(10);
-          // value += 1;
-          // value = constrain(value, 0, 99);
-
-          // if (value == 99) {
-          //   stateCondition++;
-          //   value = 0;
-          // }
-
-          // Serial.print(TempRead); Serial.print(" ");
-          // Serial.println(percent);
-
-          // drawing charater's colums
-          // if (piece == 0) {
-          //   lcd.write(byte(1));
-          // } else if (piece == 1) {
-          //   lcd.write(byte(2));
-          // } else if (piece == 2) {
-          //   lcd.write(byte(3));
-          // } else if (piece == 3) {
-          //   lcd.write(byte(4));
-          // } else {
-          //   lcd.write(byte(5));
-          // }
         } break;
       case STATE_START_ROT: {
           if (!flagForClearLCD) {
@@ -560,8 +515,8 @@ void taskDisplay( void * parameter)
           //char minuteLeft[4];
 
           // convert to string
-          sprintf(tempActual, "%3d", floor(TempRead));
-          sprintf(speedActual, "%3d", floor(MTR_speed_actual));
+          sprintf(tempActual, "%3d", int(TempRead));
+          sprintf(speedActual, "%3d", int(MTR_speed_actual));
           sprintf(setTemp, "%3d", temperatur);
           sprintf(setSpeed, "%3d", kecepatan);
           //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
@@ -570,16 +525,16 @@ void taskDisplay( void * parameter)
           lcd.setCursor(0, 0);
           lcd.print("Set point: ");
           lcd.setCursor(12, 0);
-          // lcd.print(setSpeed);
-          // lcd.print(setTemp);
+          lcd.print(setSpeed);
+          lcd.print(setTemp);
           lcd.setCursor(0, 1);
           lcd.print("Kecepatan  : ");
           lcd.setCursor(14, 1);
-          // lcd.print(speedActual);
+          lcd.print(speedActual);
           lcd.setCursor(0, 2);
           lcd.print("Suhu actual: ");
           lcd.setCursor(14, 2);
-          // lcd.print(tempActual);
+          lcd.print(tempActual);
           // lcd.setCursor(0, 3);
           // lcd.print("Sisa waktu : ");
           // lcd.setCursor(14, 3);
