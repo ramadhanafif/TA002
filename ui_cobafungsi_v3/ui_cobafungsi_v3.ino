@@ -316,7 +316,7 @@ void taskInput( void * parameter )
     } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
       //button is being pushed
       // stateCondition ++;
-      // encoderValue = constantEncoderVal;
+      // encoderValue = constantEncoderVal; Wajib ada, dipindah diluar fungsi 
       flagGreenButton = HIGH;
     }
     lastButtonStateGreen = currentButtonStateGreen;
@@ -349,8 +349,6 @@ void taskInput( void * parameter )
       //encoderValue = constantEncoderVal;
     }
     lastButtonStateWhite = currentButtonStateWhite;
-
-    // Serial.println("Task Input");
   }
 }
 
@@ -361,6 +359,8 @@ void taskPause( void * parameter)
   vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
   for ( ; ; ) {
     // push button action
+    int lastStateCondition = stateCondition;
+    
     currentButtonStateYellow = digitalRead(switchPinYellow);
     vTaskDelay(30);
     if (currentButtonStateYellow == HIGH && lastButtonStateYellow == LOW) {
@@ -372,13 +372,11 @@ void taskPause( void * parameter)
         stateCondition = STATE_PAUSE;
         pauseState = 1;
       } else {
-        stateCondition--;
+        stateCondition = lastStateCondition;
         pauseState = 0;
       }
     }
     lastButtonStateYellow = currentButtonStateYellow;
-
-    // Serial.println("Task Pause");
   }
 }
 
