@@ -100,6 +100,7 @@ bool IsRun_PWMCalculator = RUNNING;
 #define STACK_SIZE_PMNS           2024
 #define STACK_SIZE_DISPLAY        1024*4
 
+
 #define PRIORITY_TASK_PAUSE           1
 #define PRIORITY_TASK_PWMCalculator   2
 #define PRIORITY_TASK_INPUT           3
@@ -232,6 +233,7 @@ void setup() {
     PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
     &TaskHandle_SpeadRead);   /* Task handle. */
 
+
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
     taskPrint,                /* Task function. */
@@ -309,7 +311,9 @@ void taskInput( void * parameter )
   for ( ; ; ) {
     // push button action
     vTaskDelay(90);
+
     currentButtonStateGreen = digitalRead(switchPinGreen);
+
     if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
       //button is not being pushed
       //do nothing
@@ -322,6 +326,7 @@ void taskInput( void * parameter )
     lastButtonStateGreen = currentButtonStateGreen;
 
     currentButtonStateBlack = digitalRead(switchPinBlack);
+    // vTaskDelay(10);
     if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
       //button is not being pushed
       //do nothing
@@ -334,7 +339,7 @@ void taskInput( void * parameter )
     lastButtonStateBlack = currentButtonStateBlack;
 
     currentButtonStateWhite = digitalRead(switchPinWhite);
-
+    // vTaskDelay(10);
     if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
       //button is not being pushed
       //do nothing
@@ -349,8 +354,6 @@ void taskInput( void * parameter )
       //encoderValue = constantEncoderVal;
     }
     lastButtonStateWhite = currentButtonStateWhite;
-
-    // Serial.println("Task Input");
   }
 }
 
@@ -552,13 +555,10 @@ void taskDisplay( void * parameter)
           lcd.setCursor(0, 3);
           lcd.print("Lanjut");
 
-          BaseType_t xReturned;
-          // TaskHandle_t xHandle = NULL;
-          
+          // TaskHandle_t xBuzzerHandle = NULL;
+          //Jangan lupa di batasin untuk bunyi cuma 3 kali aja!!!!!!!!
+          // xTaskCreate(ringBuzzer, "Ring Buzzer", 200, NULL, 1, &xBuzzerHandle);
 
-          if (xReturned != pdPASS)
-            xReturned = xTaskCreate(ringBuzzer, "Ring Buzzer", 800, (void *) 3, 5, NULL);
-          // xTaskCreate(ringBuzzer, "Ring Buzzer", STACK SIZE, (void *) JUMLAH LOOP BUZZER, PRIORITY, NULL);
           if (flagGreenButton) {
             stateCondition = STATE_WAIT_TEMP_STEADY;
             flagGreenButton = LOW;
@@ -828,8 +828,7 @@ void taskPMNS_MAIN(void* v) {
 
 void ringBuzzer (void* v) {
   pinMode(BUZZER_PIN, OUTPUT);
-  for (int i = 0; i < (int) v; i++)
-  {
+  while (1) {
     digitalWrite(BUZZER_PIN, HIGH);
     vTaskDelay(200);
     digitalWrite(BUZZER_PIN, LOW);
@@ -841,16 +840,15 @@ void ringBuzzer (void* v) {
     vTaskDelay(100);
 
     digitalWrite(BUZZER_PIN, HIGH);
-    vTaskDelay(500);
+    vTaskDelay(350);
     digitalWrite(BUZZER_PIN, LOW);
     vTaskDelay(2000);
   }
-  vTaskDelete(NULL);
 }
 
 #if ENABLE_PRINT_DEBUG
 void taskPrint(void* v) {
-  char data[150];
+  char data[100];
 
   Serial.begin(57600);
   Serial.write(0x2);//Start of text
@@ -1005,8 +1003,17 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 12; //8
-  double ki = 0.003; //0.03
+  double kp;
+  double ki;
+
+  if (setPoint <= 75) {
+    kp = 12;
+    ki = 0.003;
+  }
+  else {
+    kp = 12;
+    ki = 0.004;
+  }
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
