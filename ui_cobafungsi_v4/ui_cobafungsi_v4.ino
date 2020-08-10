@@ -22,16 +22,16 @@
 #define menConstant    0
 #define constantEncoderVal 28116000
 
-#define encoderPin1     33//25//19
-#define encoderPin2     25//26//18
-#define switchPinGreen  26//27//5
-#define switchPinYellow 14//17
-#define switchPinWhite  13//12//16
-#define switchPinBlack  27//14//4
-#define pwm             18//0// 2
-#define encoderMotor    17//2// 15
-
-//5,23,18,19
+#define encoderPin1     33
+#define encoderPin2     25
+#define switchPinGreen  26
+#define switchPinYellow 14
+#define switchPinWhite  13
+#define switchPinBlack  27
+#define pwm             18
+#define encoderMotor    17
+#define I2C_SDA         21
+#define I2C_SCL         23
 
 /*MAIN State Definitions*/
 #define STATE_INIT         -1
@@ -48,8 +48,8 @@
 #define STATE_DONE         10
 
 /* PEMANAS Definitions*/
-#define TEMP_SENSOR_PIN   19//18//23
-#define SSR_PIN           23//5//26
+#define TEMP_SENSOR_PIN   19
+#define SSR_PIN           23
 
 #define BB 0
 
@@ -62,7 +62,7 @@
 #define PMNS_STATE_STEADY 1
 
 
-#define BUZZER_PIN 32//33
+#define BUZZER_PIN 32
 
 MedianFilter<double> medianFilter(3);
 /*---------------------------------------------------------------------*/
@@ -92,18 +92,18 @@ bool IsRun_Input = RUNNING;
 bool IsRun_Pause = RUNNING;
 bool IsRun_PWMCalculator = RUNNING;
 
-#define STACK_SIZE_PAUSE          2024
+#define STACK_SIZE_PAUSE          4048
 #define STACK_SIZE_PWMCalculator  2024
 #define STACK_SIZE_INPUT          2024
 #define STACK_SIZE_SPEEDREAD      2024
 #define STACK_SIZE_PMNS           2024
 
 #define PRIORITY_TASK_PAUSE           1
-#define PRIORITY_TASK_PWMCalculator   2
-#define PRIORITY_TASK_INPUT           3
-#define PRIORITY_TASK_SPEEDREAD       5
-#define PRIORITY_TASK_PMNS            4
-#define PRIORITY_TASK_DISPLAY         3
+#define PRIORITY_TASK_PWMCalculator   1
+#define PRIORITY_TASK_INPUT           1
+#define PRIORITY_TASK_SPEEDREAD       4
+#define PRIORITY_TASK_PMNS            3
+#define PRIORITY_TASK_DISPLAY         2
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -135,14 +135,14 @@ int lastLSB = 0;
 volatile unsigned int timerCounter;
 
 // setting PWM properties
-const int MTR_freq = 256000;
+const int MTR_freq = 2000;
 const int MTR_pwmChannel = 0;
 const int MTR_resolution = 8;
 
 // PID controller
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
-double MTR_Kp = 1;
+double MTR_Kp = 2;
 double MTR_Kd = 0.09;
 double MTR_Ki = 0.04;
 float MTR_error = 0;
@@ -179,6 +179,7 @@ SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
+TwoWire I2CBME = TwoWire(0);
 
 //PEMANAS
 OneWire oneWire(TEMP_SENSOR_PIN);
@@ -209,7 +210,8 @@ void IRAM_ATTR onTimer() {
 /*-------------------------------SETUP---------------------------------*/
 /*---------------------------------------------------------------------*/
 void setup() {
-  Serial.begin (57600);
+  Serial.begin (115200);
+  I2CBME.begin(I2C_SDA, I2C_SCL, 64000);
 
   // timer
   pinMode(BUZZER_PIN, OUTPUT);
@@ -390,6 +392,7 @@ void taskDisplay( void * parameter)
   attachInterrupt(encoderPin2, updateEncoder, CHANGE);
 
   int counter = 0;
+  int lcdResetCounter = 0;
 
   // initialize the LCD
   lcd.begin();
@@ -499,6 +502,15 @@ void taskDisplay( void * parameter)
             PMNS_pemanas_state = PMNS_STATE_STEADY;
             // percent = 100;
           }
+
+          if (lcdResetCounter > 12) {
+            // initialize the LCD
+            lcd.begin();
+            lcd.createChar(0, arrow);           // arrow
+            lcdResetCounter = 0;
+          } else {
+              lcdResetCounter++;
+          }
         } break;
       case STATE_START_ROT: {
           if (!flagForClearLCD) {
@@ -549,6 +561,15 @@ void taskDisplay( void * parameter)
           MTR_speed_req = kecepatan;
           vTaskControl(TaskHandle_Pause, &IsRun_Pause, RESUME);
           vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
+
+          if (lcdResetCounter > 12) {
+            // initialize the LCD
+            lcd.begin();
+            lcd.createChar(0, arrow);           // arrow
+            lcdResetCounter = 0;
+          } else {
+              lcdResetCounter++;
+          }
         } break;
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
@@ -590,7 +611,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       ledcWrite(MTR_pwmChannel, 0);
     } else {
       MTR_error = MTR_speed_req - MTR_speed_actual;
-      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki) + 130;
+      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki) + 100;
       MTR_last_error = MTR_error;
       MTR_sum_error += MTR_error;
       MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
