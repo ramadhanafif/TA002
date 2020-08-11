@@ -1,5 +1,5 @@
 #define ENABLE_PRINT_DEBUG 1
-
+#define BYPASS_TO_MAIN 0
 /*---------------------------------------------------------------------*/
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -34,18 +34,18 @@
 #define I2C_SCL         23
 
 /*MAIN State Definitions*/
-#define STATE_INIT         -1
-#define STATE_INPUT_TEMP    0
-#define STATE_INPUT_RPM     1
-#define STATE_INPUT_JAM     2
-#define STATE_INPUT_MENIT   3
-#define STATE_WAIT_NEXT     4
+#define STATE_INIT          0
+#define STATE_INPUT_TEMP    1
+#define STATE_INPUT_RPM     2
+#define STATE_INPUT_JAM     3
+#define STATE_INPUT_MENIT   4
 #define STATE_CONFIRM       5
-#define STATE_START_PROCESS 6
-#define STATE_PANAS_AWAL    7
-#define STATE_START_ROT     8
-#define STATE_PAUSE         9
-#define STATE_DONE         10
+#define STATE_PANAS_PID     6
+#define STATE_IN_TABUNG     7
+#define STATE_TEMP_STEADY   8
+#define STATE_START_ROT     9
+#define STATE_PAUSE        10
+#define STATE_DONE         11
 
 /* PEMANAS Definitions*/
 #define TEMP_SENSOR_PIN   19
@@ -58,8 +58,9 @@
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
-#define PMNS_STATE_START  0
-#define PMNS_STATE_STEADY 1
+#define PMNS_STATE_PID  0
+#define PMNS_STATE_BANG 1
+#define PMNS_STATE_NULL 9
 
 
 #define BUZZER_PIN 32
@@ -125,6 +126,11 @@ boolean lastButtonStateWhite = LOW;
 boolean currentButtonStateBlack;
 boolean lastButtonStateBlack = LOW;
 
+boolean flagSignalGreen = LOW;
+boolean flagSignalWhite = LOW;
+boolean flagSignalBlack = LOW;
+boolean flagSignalYellow = LOW;
+
 volatile int lastEncoded = 0;
 volatile unsigned long encoderValue = constantEncoderVal;
 long lastencoderValue = 0; // store the value of rotary encoder
@@ -164,9 +170,11 @@ boolean pauseState = 0;
 boolean flagForClearLCD = 0; // variable for clear the lcd at the STATE_START_ROT
 
 // PEMANAS
-unsigned int PMNS_pemanas_state = 0;
-unsigned int PMNS_flag_pemanas_awal_done = 0;
-double TempRead = 0;
+volatile unsigned int PMNS_pemanas_state = PMNS_STATE_NULL;
+volatile unsigned int PMNS_flag_pid_done = 0;
+volatile double TempRead = 0;
+volatile unsigned int PMNS_state_counter = 0;
+
 
 /*---------------------------------------------------------------------*/
 /*------------------------------OBJECTS--------------------------------*/
@@ -306,53 +314,53 @@ void taskInput( void * parameter )
   pinMode(switchPinWhite, INPUT_PULLUP);
   pinMode(switchPinBlack, INPUT_PULLUP);
 
-  vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
+  TickType_t xLastWakeTimeSpeedRead;
+  const TickType_t xFrequency = 30;
+
+  vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND); // (?) emang perlu?
+  
   for ( ; ; ) {
+    vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
+
     // push button action
+    currentButtonStateBlack = digitalRead(switchPinBlack);
     currentButtonStateGreen = digitalRead(switchPinGreen);
-    vTaskDelay(10);
+    currentButtonStateWhite = digitalRead(switchPinWhite);
+    vTaskDelay(30);
+    
     if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
       //button is not being pushed
       //do nothing
     } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
       //button is being pushed
-      stateCondition ++;
-      encoderValue = constantEncoderVal;
-      forward = 1;
+      // stateCondition ++;
+      // encoderValue = constantEncoderVal;
+      flagSignalGreen = HIGH;
+      // forward = 1;
     }
-    lastButtonStateGreen = currentButtonStateGreen;
 
-    currentButtonStateBlack = digitalRead(switchPinBlack);
-    vTaskDelay(10);
     if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
       //button is not being pushed
       //do nothing
     } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH) {
       //button is being pushed
-      stateCondition --;
-      encoderValue = constantEncoderVal;
-      forward = 0;
+      // stateCondition --;
+      // encoderValue = constantEncoderVal;
+      flagSignalBlack = HIGH;
+      // forward = 0;
     }
-    lastButtonStateBlack = currentButtonStateBlack;
 
-    currentButtonStateWhite = digitalRead(switchPinWhite);
-    vTaskDelay(10);
     if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
       //button is not being pushed
       //do nothing
     } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
       //button is being pushed
       stateCondition = STATE_INIT;
-      encoderValue = constantEncoderVal;
-      temperatur = temConstant;
-      kecepatan = kecConstant;
-      jam = jamConstant;
-      menit = menConstant;
-      //encoderValue = constantEncoderVal;
     }
-    lastButtonStateWhite = currentButtonStateWhite;
 
-    // Serial.println("Task Input");
+    lastButtonStateBlack = currentButtonStateBlack;
+    lastButtonStateGreen = currentButtonStateGreen;
+    lastButtonStateWhite = currentButtonStateWhite;
   }
 }
 
@@ -405,35 +413,82 @@ void taskDisplay( void * parameter)
       case STATE_INIT: {
           vTaskControl(TaskHandle_Input, &IsRun_Input, RESUME);
           MTR_speed_req = 0;
+          lcd.begin();
+          vTaskDelay(100);
           lcd.clear();
-          stateCondition++;
+          stateCondition = STATE_INPUT_TEMP;
+          temperatur = temConstant;
+          kecepatan = kecConstant;
+          jam = jamConstant;
+          menit = menConstant;
+          encoderValue = constantEncoderVal;
         } break;
       case STATE_INPUT_TEMP: {
           temperatur = ((encoderValue / 4) % 66) + 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          // Serial.print(temperatur);
+          if (flagSignalGreen == HIGH){
+            flagSignalGreen = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_RPM;
+          }
+          else if (flagSignalBlack == HIGH){
+            flagSignalBlack = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_TEMP;
+          }
         } break;
       case STATE_INPUT_RPM: {
           kecepatan = (encoderValue / 4) % 71 + 10;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+          if (flagSignalGreen == HIGH){
+            flagSignalGreen = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_JAM;
+          }
+          else if (flagSignalBlack == HIGH){
+            flagSignalBlack = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_TEMP;
+          }
         } break;
       case STATE_INPUT_JAM: {
           jam = (encoderValue / 4) % 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
+          if (flagSignalGreen == HIGH){
+            flagSignalGreen = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_MENIT;
+          }
+          else if (flagSignalBlack == HIGH){
+            flagSignalBlack = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_RPM;
+          }
         } break;
       case STATE_INPUT_MENIT: {
           menit = (encoderValue / 4) % 60;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-        } break;
-      case STATE_WAIT_NEXT: {
-          if (forward) {
+          if (flagSignalGreen == HIGH){
+            flagSignalGreen = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_CONFIRM;
             lcd.clear();
-            stateCondition ++;
-          } else {
-            lcd.clear();
-            stateCondition --;
+          }
+          else if (flagSignalBlack == HIGH){
+            flagSignalBlack = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_JAM;
           }
         } break;
+      // case STATE_WAIT_NEXT: {
+      //     if (forward) {
+      //       lcd.clear();
+      //       stateCondition ++;
+      //     } else {
+      //       lcd.clear();
+      //       stateCondition --;
+      //     }
+      //   } break;
       case STATE_CONFIRM: {
           lcd.setCursor(0, 0);
           lcd.print("Lanjutkan Pengadukan");
@@ -441,28 +496,41 @@ void taskDisplay( void * parameter)
           lcd.print("Ya");
           lcd.setCursor(15, 3);
           lcd.print("Tidak");
-        } break;
-      case STATE_START_PROCESS: {
-          if (startProcess) {
-            stateCondition = STATE_PANAS_AWAL;
+          if (flagSignalGreen == HIGH){
+            flagSignalGreen = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_PANAS_PID;
             lcd.clear();
           }
-          else {
-            forward = 1;
-            stateCondition = STATE_INIT;
+          else if (flagSignalBlack == HIGH){
+            flagSignalBlack = LOW;
+            encoderValue = constantEncoderVal;
+            stateCondition = STATE_INPUT_TEMP;
+            lcd.clear();
           }
         } break;
-      case STATE_PANAS_AWAL: {
-          // !!!!! buat bypass aja !!!!!
-          // stateCondition++;
+      // case STATE_START_PROCESS: {
+      //     if (startProcess) {
+      //       stateCondition = STATE_INPUT_TEMP;
+      //       lcd.clear();
+      //     }
+      //     else {
+      //       forward = 1;
+      //       stateCondition = STATE_INIT;
+      //     }
+      //   } break;
+      case STATE_PANAS_PID: {
 
-          // buffer variable
-          char bufferForPrintTemp[4];
-          char bufferForprintTempRead[4];
+#if BYPASS_TO_MAIN
+          stateCondition = STATE_START_ROT;
+#endif
+          // // buffer variable
+          // char bufferForPrintTemp[4];
+          // char bufferForprintTempRead[4];
 
-          // convert to string
-          sprintf(bufferForPrintTemp, "%3d", temperatur);
-          sprintf(bufferForprintTempRead, "%3d", int(TempRead));
+          // // convert to string
+          // sprintf(bufferForPrintTemp, "%3d", temperatur);
+          // sprintf(bufferForprintTempRead, "%3d", int(TempRead));
 
 
           lcd.setCursor(0, 0);
@@ -478,13 +546,17 @@ void taskDisplay( void * parameter)
 
 
           //PERINTAH PANAS MASUK SINI
-          vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
-          PMNS_pemanas_state = PMNS_STATE_START;
+          if (PMNS_pemanas_state != PMNS_STATE_PID){
+            vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
+            PMNS_pemanas_state = PMNS_STATE_PID;
+          }
 
-          if (PMNS_flag_pemanas_awal_done == 1) {
-            stateCondition = STATE_START_ROT;
-            PMNS_pemanas_state = PMNS_STATE_STEADY;
-            // percent = 100;
+          if (PMNS_flag_pid_done == 1) {
+            stateCondition = STATE_IN_TABUNG;
+            PMNS_pemanas_state = PMNS_STATE_BANG;
+            PMNS_flag_pid_done = 0;
+            PMNS_state_counter = 0;
+            lcd.clear();
           }
 
           if (lcdResetCounter > 3) {
@@ -496,12 +568,31 @@ void taskDisplay( void * parameter)
               lcdResetCounter++;
           }
         } break;
-      case STATE_START_ROT: {
-          if (!flagForClearLCD) {
-            lcd.clear();
-            flagForClearLCD = 1;
-          }
+      case STATE_IN_TABUNG:{
+          lcd.setCursor(2, 0);
+          lcd.print("Masukkan tabung!");
+          lcd.setCursor(0, 3);
+          lcd.print("Lanjut");
 
+          if (flagSignalGreen == HIGH){
+            flagSignalGreen = LOW;
+            stateCondition = STATE_TEMP_STEADY;
+            lcd.clear();
+          }
+          else if (flagSignalBlack == HIGH){
+            flagSignalBlack = LOW;
+            lcd.clear();
+          }
+      } break;
+      case STATE_TEMP_STEADY:{
+          lcd.setCursor(2, 0);
+          lcd.print("Memanaskan pid 2");
+          if(PMNS_flag_pid_done == 1){
+            stateCondition = STATE_START_ROT;
+            lcd.clear();
+          }
+      } break;
+      case STATE_START_ROT: {
           // buffer variable
           char tempActual[4];
           char speedActual[4];
@@ -662,10 +753,6 @@ void taskPMNS_MAIN(void* v) {
   double prevtime = millis();
   double cumerror = 0;
 
-  //  unsigned int prev_TempRead;
-  unsigned int temp_counter = 0;
-
-
   const int pwm_freq = 2;
   const int pwm_ledChannel = 2;
   const int pwm_resolution = 16;
@@ -687,7 +774,7 @@ void taskPMNS_MAIN(void* v) {
     vTaskDelayUntil( &xLastWakeTime, 1000);
     TempRead = get_temp(sensor);
     switch (PMNS_pemanas_state) {
-      case PMNS_STATE_START: //PID
+      case PMNS_STATE_PID: //PID
         {
           //PID calculation
           double output = PMNS_computePID(TempRead, setPoint, &prevtime, &cumerror);
@@ -712,14 +799,14 @@ void taskPMNS_MAIN(void* v) {
 
           //Check for temperature steadiness
           if (abs(TempRead - setPoint) <= 1) {
-            temp_counter++;
+            PMNS_state_counter++;
           }
-          if (temp_counter >= 2) {
-            PMNS_flag_pemanas_awal_done = 1;
+          if (PMNS_state_counter >= 2) {
+            PMNS_flag_pid_done = 1;
           }
           break;
         }
-      case PMNS_STATE_STEADY: //On Off
+      case PMNS_STATE_BANG: //On Off
         {
           //Stop PWM, switch to bang-bang
           if (pwm_attach) {
@@ -762,15 +849,18 @@ void taskPMNS_MAIN(void* v) {
 #if ENABLE_PRINT_DEBUG
 void taskPrint(void* v) {
   char data[100];
-
+  const char stateConName[][15]={"INIT","TEMP","RPM",
+                          "JAM","MENIT","CONFIRM",
+                          "PNS-PID","IN-TBNG","PNS-PID2",
+                          "ROT","PAUSE","DONE"};
   Serial.begin(57600);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%d,%d,%d, %d,%f,%d,%f,%u,%u,%d",
-            stateCondition, PMNS_ssr, PMNS_counter,
+    sprintf(data, "%s,%d,%d, %d,%f,%d,%f,%u,%u,%d",
+            stateConName[stateCondition], PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
             durasi, timerCounter, MTR_PWM_val);
@@ -804,7 +894,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print((char)223);                   // show string "degree" on LCD
   lcd.setCursor(17, 0);                   // show character at column 17, row 0
   lcd.print("C");                         // show string on LCD
-  if (buffSC == 0) {
+  if (buffSC == STATE_INPUT_TEMP) {
     lcd.setCursor(19, 0);
     lcd.write(byte(0));
   }
@@ -819,7 +909,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print(spdVal);                      // show the value
   lcd.setCursor(16, 1);                   // show character at column 16, row 1
   lcd.print("RPM");                       // show string on LCD
-  if (buffSC == 1) {
+  if (buffSC == STATE_INPUT_RPM) {
     lcd.setCursor(19, 1);
     lcd.write(byte(0));
   } else {
@@ -837,7 +927,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print(minVal);                      // show the value
   lcd.setCursor(16, 3);                   // show character at column 16, row 3
   lcd.print("MEN");                       // show string on LCD
-  if (buffSC == 2) {
+  if (buffSC == STATE_INPUT_JAM) {
     lcd.setCursor(19, 2);
     lcd.write(byte(0));
   } else {
@@ -855,7 +945,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print(minVal);                      // show the value
   lcd.setCursor(16, 3);                   // show character at column 16, row 3
   lcd.print("MEN");                       // show string on LCD
-  if (buffSC == 3) {
+  if (buffSC == STATE_INPUT_MENIT) {
     lcd.setCursor(19, 3);
     lcd.write(byte(0));
   } else {
