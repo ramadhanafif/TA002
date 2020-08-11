@@ -102,8 +102,8 @@ bool IsRun_PWMCalculator = RUNNING;
 #define PRIORITY_TASK_PWMCalculator   1
 #define PRIORITY_TASK_INPUT           1
 #define PRIORITY_TASK_SPEEDREAD       4
-#define PRIORITY_TASK_PMNS            3
-#define PRIORITY_TASK_DISPLAY         2
+#define PRIORITY_TASK_PMNS            2
+#define PRIORITY_TASK_DISPLAY         3
 
 /*---------------------------------------------------------------------*/
 /*-----------------------------VARIABLES-------------------------------*/
@@ -135,7 +135,7 @@ int lastLSB = 0;
 volatile unsigned int timerCounter;
 
 // setting PWM properties
-const int MTR_freq = 2000;
+const int MTR_freq = 10000;
 const int MTR_pwmChannel = 0;
 const int MTR_resolution = 8;
 
@@ -143,8 +143,8 @@ const int MTR_resolution = 8;
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
 double MTR_Kp = 2;
-double MTR_Kd = 0.09;
-double MTR_Ki = 0.04;
+double MTR_Kd = 0.1;
+double MTR_Ki = 0.1;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -211,7 +211,7 @@ void IRAM_ATTR onTimer() {
 /*---------------------------------------------------------------------*/
 void setup() {
   Serial.begin (115200);
-  I2CBME.begin(I2C_SDA, I2C_SCL, 64000);
+  I2CBME.begin(I2C_SDA, I2C_SCL, 90000);
 
   // timer
   pinMode(BUZZER_PIN, OUTPUT);
@@ -437,26 +437,10 @@ void taskDisplay( void * parameter)
       case STATE_CONFIRM: {
           lcd.setCursor(0, 0);
           lcd.print("Lanjutkan Pengadukan");
-          lcd.setCursor(3, 1);
+          lcd.setCursor(0, 3);
           lcd.print("Ya");
-          lcd.setCursor(3, 2);
+          lcd.setCursor(15, 3);
           lcd.print("Tidak");
-          if (((encoderValue / 4) % 2) == 0) {
-            lcd.setCursor(9, 1);
-            lcd.write(byte(0));
-            lcd.setCursor(9, 2);
-            lcd.print(" ");
-            startProcess = 1;
-            // Serial.println(startProcess);
-          }
-          else {
-            lcd.setCursor(9, 1);
-            lcd.print(" ");
-            lcd.setCursor(9, 2);
-            lcd.write(byte(0));
-            startProcess = 0;
-            // Serial.println(startProcess);
-          }
         } break;
       case STATE_START_PROCESS: {
           if (startProcess) {
@@ -483,14 +467,14 @@ void taskDisplay( void * parameter)
 
           lcd.setCursor(0, 0);
           lcd.print("Memanaskan");
-          lcd.setCursor(0, 1);
-          lcd.print("Suhu target: ");
-          lcd.setCursor(14, 1);
-          lcd.print(bufferForPrintTemp);
-          lcd.setCursor(0, 2);
-          lcd.print("Suhu aktual: ");
-          lcd.setCursor(14, 2);
-          lcd.print(bufferForprintTempRead);
+          // lcd.setCursor(0, 1);
+          // lcd.print("Suhu target: ");
+          // lcd.setCursor(14, 1);
+          // lcd.print(bufferForPrintTemp);
+          // lcd.setCursor(0, 2);
+          // lcd.print("Suhu aktual: ");
+          // lcd.setCursor(14, 2);
+          // lcd.print(bufferForprintTempRead);
 
 
           //PERINTAH PANAS MASUK SINI
@@ -503,7 +487,7 @@ void taskDisplay( void * parameter)
             // percent = 100;
           }
 
-          if (lcdResetCounter > 12) {
+          if (lcdResetCounter > 3) {
             // initialize the LCD
             lcd.begin();
             lcd.createChar(0, arrow);           // arrow
@@ -611,11 +595,12 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       ledcWrite(MTR_pwmChannel, 0);
     } else {
       MTR_error = MTR_speed_req - MTR_speed_actual;
-      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki) + 100;
+      MTR_pidTerm = (MTR_Kp * MTR_error) + (MTR_Kd * (MTR_error - MTR_last_error)) + (MTR_sum_error * MTR_Ki);
       MTR_last_error = MTR_error;
       MTR_sum_error += MTR_error;
       MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
       MTR_PWM_val = constrain(MTR_pidTerm, 0, 255);
+    
 
       // PWM signal
       ledcWrite(MTR_pwmChannel, MTR_PWM_val);
