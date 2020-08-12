@@ -532,19 +532,6 @@ void taskDisplay( void * parameter)
           // sprintf(bufferForPrintTemp, "%3d", temperatur);
           // sprintf(bufferForprintTempRead, "%3d", int(TempRead));
 
-
-          lcd.setCursor(0, 0);
-          lcd.print("Memanaskan");
-          // lcd.setCursor(0, 1);
-          // lcd.print("Suhu target: ");
-          // lcd.setCursor(14, 1);
-          // lcd.print(bufferForPrintTemp);
-          // lcd.setCursor(0, 2);
-          // lcd.print("Suhu aktual: ");
-          // lcd.setCursor(14, 2);
-          // lcd.print(bufferForprintTempRead);
-
-
           //PERINTAH PANAS MASUK SINI
           if (PMNS_pemanas_state != PMNS_STATE_PID){
             vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
@@ -567,13 +554,19 @@ void taskDisplay( void * parameter)
           } else {
               lcdResetCounter++;
           }
+
+          lcd.setCursor(0, 0);
+          lcd.print("Memanaskan");
+          // lcd.setCursor(0, 1);
+          // lcd.print("Suhu target: ");
+          // lcd.setCursor(14, 1);
+          // lcd.print(bufferForPrintTemp);
+          // lcd.setCursor(0, 2);
+          // lcd.print("Suhu aktual: ");
+          // lcd.setCursor(14, 2);
+          // lcd.print(bufferForprintTempRead);
         } break;
       case STATE_IN_TABUNG:{
-          lcd.setCursor(2, 0);
-          lcd.print("Masukkan tabung!");
-          lcd.setCursor(0, 3);
-          lcd.print("Lanjut");
-
           if (lcdResetCounter > 3) {
             // initialize the LCD
             lcd.begin();
@@ -592,11 +585,13 @@ void taskDisplay( void * parameter)
             flagSignalBlack = LOW;
             lcd.clear();
           }
+
+          lcd.setCursor(2, 0);
+          lcd.print("Masukkan tabung!");
+          lcd.setCursor(0, 3);
+          lcd.print("Lanjut");
       } break;
       case STATE_TEMP_STEADY:{
-          lcd.setCursor(2, 0);
-          lcd.print("Memanaskan pid 2");
-
           if (lcdResetCounter > 3) {
             // initialize the LCD
             lcd.begin();
@@ -610,8 +605,20 @@ void taskDisplay( void * parameter)
             stateCondition = STATE_START_ROT;
             lcd.clear();
           }
+
+          lcd.setCursor(2, 0);
+          lcd.print("Memanaskan pid 2");
       } break;
       case STATE_START_ROT: {
+          vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
+          vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
+          durasi = jam * 3600 + menit * 60;
+
+          timerAlarmEnable(timer);
+          MTR_speed_req = kecepatan;
+          vTaskControl(TaskHandle_Pause, &IsRun_Pause, RESUME);
+          vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
+
           // buffer variable
           char tempActual[4];
           char speedActual[4];
@@ -646,15 +653,6 @@ void taskDisplay( void * parameter)
           // lcd.setCursor(14, 3);
           // lcd.print(hourLeft);
           // lcd.print(minuteLeft);
-
-          vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
-          vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
-          durasi = jam * 3600 + menit * 60;
-
-          timerAlarmEnable(timer);
-          MTR_speed_req = kecepatan;
-          vTaskControl(TaskHandle_Pause, &IsRun_Pause, RESUME);
-          vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND);
 
           if (lcdResetCounter > 12) {
             // initialize the LCD
