@@ -574,6 +574,15 @@ void taskDisplay( void * parameter)
           lcd.setCursor(0, 3);
           lcd.print("Lanjut");
 
+          if (lcdResetCounter > 3) {
+            // initialize the LCD
+            lcd.begin();
+            lcd.createChar(0, arrow);           // arrow
+            lcdResetCounter = 0;
+          } else {
+              lcdResetCounter++;
+          }
+
           if (flagSignalGreen == HIGH){
             flagSignalGreen = LOW;
             stateCondition = STATE_TEMP_STEADY;
@@ -587,6 +596,16 @@ void taskDisplay( void * parameter)
       case STATE_TEMP_STEADY:{
           lcd.setCursor(2, 0);
           lcd.print("Memanaskan pid 2");
+
+          if (lcdResetCounter > 3) {
+            // initialize the LCD
+            lcd.begin();
+            lcd.createChar(0, arrow);           // arrow
+            lcdResetCounter = 0;
+          } else {
+              lcdResetCounter++;
+          }
+          
           if(PMNS_flag_pid_done == 1){
             stateCondition = STATE_START_ROT;
             lcd.clear();
