@@ -596,12 +596,6 @@ void taskDisplay( void * parameter)
           lcd.setCursor(2, 0);
           lcd.print("Memanaskan pid 2");
 
-                    if (PMNS_flag_pid_done == 1) {
-            stateCondition = STATE_IN_TABUNG;
-
-            lcd.clear();
-          }
-
           if (lcdResetCounter > 3) {
             // initialize the LCD
             lcd.begin();
