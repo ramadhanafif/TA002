@@ -586,6 +586,7 @@ void taskDisplay( void * parameter)
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
             lcd.clear();
+            PMNS_pemanas_state = PMNS_STATE_BANG;
           }
           else if (flagSignalBlack == HIGH){
             flagSignalBlack = LOW;
@@ -607,6 +608,7 @@ void taskDisplay( void * parameter)
 
           if(PMNS_flag_pid_done == 1){
             stateCondition = STATE_START_ROT;
+            
             lcd.clear();
           }
       } break;
@@ -1024,8 +1026,17 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 12; //8
-  double ki = 0.003; //0.03
+  double kp;
+  double ki;
+
+  if (setPoint>= 75){
+    kp = 12;
+    ki = 0.004;
+  }
+  else{
+    kp = 12;
+    ki = 0.003;
+  }
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
