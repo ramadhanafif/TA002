@@ -540,7 +540,6 @@ void taskDisplay( void * parameter)
 
           if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_IN_TABUNG;
-            PMNS_pemanas_state = PMNS_STATE_BANG;
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
             lcd.clear();
