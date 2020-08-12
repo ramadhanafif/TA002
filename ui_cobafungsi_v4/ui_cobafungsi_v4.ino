@@ -1028,7 +1028,7 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double kp;
   double ki;
 
-  if (setPoint>= 75){
+  if (setPoint> 75){
     kp = 12;
     ki = 0.004;
   }
