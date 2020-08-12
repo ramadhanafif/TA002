@@ -586,7 +586,6 @@ void taskDisplay( void * parameter)
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
             lcd.clear();
-            PMNS_pemanas_state = PMNS_STATE_BANG;
           }
           else if (flagSignalBlack == HIGH){
             flagSignalBlack = LOW;
@@ -608,7 +607,7 @@ void taskDisplay( void * parameter)
 
           if(PMNS_flag_pid_done == 1){
             stateCondition = STATE_START_ROT;
-            
+            PMNS_pemanas_state = PMNS_STATE_BANG;
             lcd.clear();
           }
       } break;
