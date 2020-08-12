@@ -553,8 +553,6 @@ void taskDisplay( void * parameter)
 
           if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_IN_TABUNG;
-            PMNS_flag_pid_done = 0;
-            PMNS_state_counter = 0;
             lcd.clear();
           }
 
@@ -585,6 +583,8 @@ void taskDisplay( void * parameter)
           if (flagSignalGreen == HIGH){
             flagSignalGreen = LOW;
             stateCondition = STATE_TEMP_STEADY;
+            PMNS_flag_pid_done = 0;
+            PMNS_state_counter = 0;
             lcd.clear();
           }
           else if (flagSignalBlack == HIGH){
@@ -595,6 +595,12 @@ void taskDisplay( void * parameter)
       case STATE_TEMP_STEADY:{
           lcd.setCursor(2, 0);
           lcd.print("Memanaskan pid 2");
+
+                    if (PMNS_flag_pid_done == 1) {
+            stateCondition = STATE_IN_TABUNG;
+
+            lcd.clear();
+          }
 
           if (lcdResetCounter > 3) {
             // initialize the LCD
