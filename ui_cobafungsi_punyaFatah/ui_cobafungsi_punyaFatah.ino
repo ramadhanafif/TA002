@@ -4,6 +4,7 @@
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
 #include "Wire.h"                 // I2C untuk LCD
+#include <LiquidCrystal_PCF8574.h>// Alternative Library LCD I2C
 #include "LiquidCrystal_I2C.h"    // include library LCD I2C
 #include "SimpleKalmanFilter.h"   // include library Kalman Filter
 
@@ -186,8 +187,9 @@ volatile unsigned int PMNS_state_counter = 0;
 SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
-LiquidCrystal_I2C lcd(0x27, 20, 4);
-TwoWire I2CBME = TwoWire(0);
+// LiquidCrystal_I2C lcd(0x27, 20, 4);
+LiquidCrystal_PCF8574 lcd(0x27);
+// TwoWire I2CBME = TwoWire(0);
 
 //PEMANAS
 OneWire oneWire(TEMP_SENSOR_PIN);
@@ -219,7 +221,10 @@ void IRAM_ATTR onTimer() {
 /*---------------------------------------------------------------------*/
 void setup() {
   Serial.begin (115200);
-  I2CBME.begin(I2C_SDA, I2C_SCL, 90000);
+  //I2CBME.begin(I2C_SDA, I2C_SCL, 90000);
+  Wire.begin();
+  Wire.beginTransmission(0x27);
+  // lcd.begin(20, 4);
 
   // timer
   pinMode(BUZZER_PIN, OUTPUT);
@@ -403,17 +408,19 @@ void taskDisplay( void * parameter)
   int lcdResetCounter = 0;
 
   // initialize the LCD
-  lcd.begin();
+  lcd.begin(20, 4);
   lcd.createChar(0, arrow);           // arrow
 
   unsigned int value = 0; //ini value apa
+  lcd.setBacklight(255);
+  lcd.home();
 
   for (;;) {
     switch (stateCondition) {
       case STATE_INIT: {
           vTaskControl(TaskHandle_Input, &IsRun_Input, RESUME);
           MTR_speed_req = 0;
-          lcd.begin();
+          lcd.begin(20, 4);
           vTaskDelay(100);
           lcd.clear();
           stateCondition = STATE_INPUT_TEMP;
@@ -547,8 +554,9 @@ void taskDisplay( void * parameter)
 
           if (lcdResetCounter > 3) {
             // initialize the LCD
-            lcd.begin();
+            lcd.begin(20, 4);
             lcd.createChar(0, arrow);           // arrow
+            lcd.home();
             lcdResetCounter = 0;
           } else {
               lcdResetCounter++;
@@ -568,8 +576,9 @@ void taskDisplay( void * parameter)
       case STATE_IN_TABUNG:{
           if (lcdResetCounter > 3) {
             // initialize the LCD
-            lcd.begin();
+            lcd.begin(20, 4);
             lcd.createChar(0, arrow);           // arrow
+            lcd.home();
             lcdResetCounter = 0;
           } else {
               lcdResetCounter++;
@@ -593,8 +602,9 @@ void taskDisplay( void * parameter)
       case STATE_TEMP_STEADY:{
           if (lcdResetCounter > 3) {
             // initialize the LCD
-            lcd.begin();
+            lcd.begin(20, 4);
             lcd.createChar(0, arrow);           // arrow
+            lcd.home();
             lcdResetCounter = 0;
           } else {
               lcdResetCounter++;
@@ -655,8 +665,9 @@ void taskDisplay( void * parameter)
 
           if (lcdResetCounter > 12) {
             // initialize the LCD
-            lcd.begin();
+            lcd.begin(20, 4);
             lcd.createChar(0, arrow);           // arrow
+            lcd.home();
             lcdResetCounter = 0;
           } else {
               lcdResetCounter++;
