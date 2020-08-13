@@ -1,5 +1,5 @@
 #define ENABLE_PRINT_DEBUG 1
-#define BYPASS_TO_MAIN 0
+#define BYPASS_TO_MAIN 1
 /*---------------------------------------------------------------------*/
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -234,7 +234,7 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
     &TaskHandle_SpeadRead);   /* Task handle. */
-    
+
 
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
@@ -318,7 +318,7 @@ void taskInput( void * parameter )
   const TickType_t xFrequency = 30;
 
   vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND); // (?) emang perlu?
-  
+
   for ( ; ; ) {
     vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
 
@@ -327,35 +327,42 @@ void taskInput( void * parameter )
     currentButtonStateGreen = digitalRead(switchPinGreen);
     currentButtonStateWhite = digitalRead(switchPinWhite);
     vTaskDelay(30);
-    
-    if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
-      //button is not being pushed
-      //do nothing
-    } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
-      //button is being pushed
-      // stateCondition ++;
-      // encoderValue = constantEncoderVal;
-      flagSignalGreen = HIGH;
-      // forward = 1;
-    }
 
-    if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
-      //button is not being pushed
-      //do nothing
-    } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH) {
-      //button is being pushed
-      // stateCondition --;
-      // encoderValue = constantEncoderVal;
-      flagSignalBlack = HIGH;
-      // forward = 0;
-    }
+    if ((stateCondition == STATE_INPUT_TEMP) ||
+        (stateCondition == STATE_INPUT_RPM) ||
+        (stateCondition == STATE_INPUT_JAM) ||
+        (stateCondition == STATE_INPUT_MENIT) ||
+        (stateCondition == STATE_CONFIRM) ||
+        (stateCondition == STATE_IN_TABUNG)) {
+      if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
+        //button is not being pushed
+        //do nothing
+      } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
+        //button is being pushed
+        // stateCondition ++;
+        // encoderValue = constantEncoderVal;
+        flagSignalGreen = HIGH;
+        // forward = 1;
+      }
 
-    if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
-      //button is not being pushed
-      //do nothing
-    } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
-      //button is being pushed
-      stateCondition = STATE_INIT;
+      if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
+        //button is not being pushed
+        //do nothing
+      } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH) {
+        //button is being pushed
+        // stateCondition --;
+        // encoderValue = constantEncoderVal;
+        flagSignalBlack = HIGH;
+        // forward = 0;
+      }
+
+      if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
+        //button is not being pushed
+        //do nothing
+      } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
+        //button is being pushed
+        stateCondition = STATE_INIT;
+      }
     }
 
     lastButtonStateBlack = currentButtonStateBlack;
@@ -384,6 +391,8 @@ void taskPause( void * parameter)
       } else {
         stateCondition--;
         pauseState = 0;
+        MTR_PWM_val = 0;
+        MTR_sum_error = 0;
       }
     }
     lastButtonStateYellow = currentButtonStateYellow;
@@ -426,12 +435,12 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_TEMP: {
           temperatur = ((encoderValue / 4) % 66) + 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_RPM;
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_TEMP;
@@ -440,12 +449,12 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_RPM: {
           kecepatan = (encoderValue / 4) % 71 + 10;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_JAM;
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_TEMP;
@@ -454,12 +463,12 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_JAM: {
           jam = (encoderValue / 4) % 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_MENIT;
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_RPM;
@@ -468,13 +477,13 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_MENIT: {
           menit = (encoderValue / 4) % 60;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_CONFIRM;
             lcd.clear();
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_JAM;
@@ -496,13 +505,13 @@ void taskDisplay( void * parameter)
           lcd.print("Ya");
           lcd.setCursor(15, 3);
           lcd.print("Tidak");
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_PANAS_PID;
             lcd.clear();
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_TEMP;
@@ -546,7 +555,7 @@ void taskDisplay( void * parameter)
 
 
           //PERINTAH PANAS MASUK SINI
-          if (PMNS_pemanas_state != PMNS_STATE_PID){
+          if (PMNS_pemanas_state != PMNS_STATE_PID) {
             vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
             PMNS_pemanas_state = PMNS_STATE_PID;
           }
@@ -562,10 +571,10 @@ void taskDisplay( void * parameter)
             lcd.createChar(0, arrow);           // arrow
             lcdResetCounter = 0;
           } else {
-              lcdResetCounter++;
+            lcdResetCounter++;
           }
         } break;
-      case STATE_IN_TABUNG:{
+      case STATE_IN_TABUNG: {
           lcd.setCursor(2, 0);
           lcd.print("Masukkan tabung!");
           lcd.setCursor(0, 3);
@@ -577,22 +586,22 @@ void taskDisplay( void * parameter)
             lcd.createChar(0, arrow);           // arrow
             lcdResetCounter = 0;
           } else {
-              lcdResetCounter++;
+            lcdResetCounter++;
           }
 
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             stateCondition = STATE_TEMP_STEADY;
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
             lcd.clear();
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             lcd.clear();
           }
-      } break;
-      case STATE_TEMP_STEADY:{
+        } break;
+      case STATE_TEMP_STEADY: {
           lcd.setCursor(2, 0);
           lcd.print("Memanaskan pid 2");
 
@@ -602,15 +611,15 @@ void taskDisplay( void * parameter)
             lcd.createChar(0, arrow);           // arrow
             lcdResetCounter = 0;
           } else {
-              lcdResetCounter++;
+            lcdResetCounter++;
           }
 
-          if(PMNS_flag_pid_done == 1){
+          if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_START_ROT;
             PMNS_pemanas_state = PMNS_STATE_BANG;
             lcd.clear();
           }
-      } break;
+        } break;
       case STATE_START_ROT: {
           // buffer variable
           char tempActual[4];
@@ -662,7 +671,7 @@ void taskDisplay( void * parameter)
             lcd.createChar(0, arrow);           // arrow
             lcdResetCounter = 0;
           } else {
-              lcdResetCounter++;
+            lcdResetCounter++;
           }
         } break;
       case STATE_PAUSE: {  // pause
@@ -710,7 +719,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       MTR_sum_error += MTR_error;
       MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
       MTR_PWM_val = constrain(MTR_pidTerm, 0, 255);
-    
+
 
       // PWM signal
       ledcWrite(MTR_pwmChannel, MTR_PWM_val);
@@ -868,17 +877,18 @@ void taskPMNS_MAIN(void* v) {
 #if ENABLE_PRINT_DEBUG
 void taskPrint(void* v) {
   char data[100];
-  const char stateConName[][15]={"INIT","TEMP","RPM",
-                          "JAM","MENIT","CONFIRM",
-                          "PNS-PID","IN-TBNG","PNS-PID2",
-                          "ROT","PAUSE","DONE"};
+  const char stateConName[][15] = {"INIT", "TEMP", "RPM",
+                                   "JAM", "MENIT", "CONFIRM",
+                                   "PNS-PID", "IN-TBNG", "PNS-PID2",
+                                   "ROT", "PAUSE", "DONE"
+                                  };
   Serial.begin(57600);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%s,%d,%d, %d,%f,%d,%f,%u,%u,%d",
+    sprintf(data, "%7s,%d,%d, %d,%.3f,%d,%f,%u,%u,%d",
             stateConName[stateCondition], PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
@@ -1028,11 +1038,11 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double kp;
   double ki;
 
-  if (setPoint> 75){
+  if (setPoint > 75) {
     kp = 12;
     ki = 0.004;
   }
-  else{
+  else {
     kp = 12;
     ki = 0.003;
   }
