@@ -4,8 +4,12 @@
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
 #include "Wire.h"                 // I2C untuk LCD
-#include <LiquidCrystal_PCF8574.h>// Alternative Library LCD I2C
-#include "LiquidCrystal_I2C.h"    // include library LCD I2C
+// #include <LiquidCrystal_PCF8574.h>// Alternative Library LCD I2C
+// #include "LiquidCrystal_I2C.h"    // include library LCD I2C
+
+#include <hd44780.h>
+#include <hd44780ioClass/hd44780_I2Cexp.h> // include i/o class header
+
 #include "SimpleKalmanFilter.h"   // include library Kalman Filter
 
 //Dibawah ini library untuk pemanas
@@ -32,7 +36,8 @@
 #define pwm             18
 #define encoderMotor    17
 #define I2C_SDA         21
-#define I2C_SCL         23
+#define I2C_SCL         22
+#define BUZZER_PIN      32
 
 /*MAIN State Definitions*/
 #define STATE_INIT          0
@@ -63,8 +68,12 @@
 #define PMNS_STATE_BANG 1
 #define PMNS_STATE_NULL 9
 
+#define WIRECLOCK 400000L // tell hd44780 example to use this i2c clock rate
+#define iLCD_ROWS 4 // independent FPS row size
+#define iLCD_COLS 20 // independent FPS col size
 
-#define BUZZER_PIN 32
+// declare the lcd object
+hd44780_I2Cexp lcd; // auto locate and autoconfig interface pins
 
 MedianFilter<double> medianFilter(3);
 /*---------------------------------------------------------------------*/
@@ -188,7 +197,7 @@ SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
 // Set the LCD address to 0x27 for a 20 chars and 4 line display
 // LiquidCrystal_I2C lcd(0x27, 20, 4);
-LiquidCrystal_PCF8574 lcd(0x27);
+// LiquidCrystal_PCF8574 lcd(0x27);
 // TwoWire I2CBME = TwoWire(0);
 
 //PEMANAS
@@ -222,6 +231,7 @@ void IRAM_ATTR onTimer() {
 void setup() {
   Serial.begin (115200);
   //I2CBME.begin(I2C_SDA, I2C_SCL, 90000);
+  lcd.begin();
   Wire.begin();
   Wire.beginTransmission(0x27);
   // lcd.begin(20, 4);
@@ -413,7 +423,6 @@ void taskDisplay( void * parameter)
 
   unsigned int value = 0; //ini value apa
   lcd.setBacklight(255);
-  lcd.home();
 
   for (;;) {
     switch (stateCondition) {
@@ -923,7 +932,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print("C");                         // show string on LCD
   if (buffSC == STATE_INPUT_TEMP) {
     lcd.setCursor(19, 0);
-    lcd.write(byte(0));
+    lcd.print((char)17);
   }
   else {
     lcd.setCursor(19, 0);
@@ -938,7 +947,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print("RPM");                       // show string on LCD
   if (buffSC == STATE_INPUT_RPM) {
     lcd.setCursor(19, 1);
-    lcd.write(byte(0));
+    lcd.print((char)17);
   } else {
     lcd.setCursor(19, 1);
     lcd.print(" ");
@@ -956,7 +965,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print("MEN");                       // show string on LCD
   if (buffSC == STATE_INPUT_JAM) {
     lcd.setCursor(19, 2);
-    lcd.write(byte(0));
+    lcd.print((char)17);
   } else {
     lcd.setCursor(19, 2);
     lcd.print(" ");
@@ -974,7 +983,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   lcd.print("MEN");                       // show string on LCD
   if (buffSC == STATE_INPUT_MENIT) {
     lcd.setCursor(19, 3);
-    lcd.write(byte(0));
+    lcd.print((char)16);
   } else {
     lcd.setCursor(19, 3);
     lcd.print(" ");
