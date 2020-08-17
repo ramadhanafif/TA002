@@ -589,6 +589,7 @@ void taskDisplay( void * parameter)
           if (lcdResetCounter > 4) {
             // initialize the LCD
             lcd.clear();
+            vTaskDelay(50);
             lcd.setCursor(2, 0);
             lcd.print("Masukkan tabung!");
             vTaskDelay(50);
@@ -609,15 +610,43 @@ void taskDisplay( void * parameter)
           }
       } break;
       case STATE_TEMP_STEADY:{
+          // buffer variable
+          unsigned int newTempForPrint = int(TempRead);
+          unsigned int oldTempForPrint;
+          char bufferForPrintTemp[4];
+          char bufferForprintTempRead[4];
+
+          // convert to string
+          sprintf(bufferForPrintTemp, "%3d", temperatur);
+          sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
+          
           if (lcdResetCounter > 6) {
             // initialize the LCD
             lcd.clear();
             lcd.setCursor(2, 0);
             lcd.print("Memanaskan pid 2");
             vTaskDelay(50);
+            lcd.setCursor(0, 1);
+            lcd.print("Suhu target: ");
+            vTaskDelay(50);
+            lcd.setCursor(0, 2);
+            lcd.print("Suhu aktual: ");
+            vTaskDelay(50);
+            lcd.setCursor(12, 1);
+            lcd.print(bufferForPrintTemp);
+            lcd.setCursor(12, 2);
+            lcd.print(bufferForprintTempRead);
+            oldTempForPrint = newTempForPrint;
             lcdResetCounter = 0;
           } else {
             lcdResetCounter++;
+            if (newTempForPrint != oldTempForPrint) {
+              lcd.setCursor(12, 1);
+              lcd.print(bufferForPrintTemp);
+              lcd.setCursor(12, 2);
+              lcd.print(bufferForprintTempRead);
+              oldTempForPrint = newTempForPrint;
+            }
           }
           
           if(PMNS_flag_pid_done == 1){
