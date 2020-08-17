@@ -1,5 +1,5 @@
 #define ENABLE_PRINT_DEBUG 1
-#define BYPASS_TO_MAIN 1
+#define BYPASS_TO_MAIN 0
 /*---------------------------------------------------------------------*/
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -389,7 +389,7 @@ void taskPause( void * parameter)
         stateCondition = STATE_PAUSE;
         pauseState = 1;
       } else {
-        stateCondition--;
+        stateCondition = STATE_TEMP_STEADY; //STATE_START_ROT;
         pauseState = 0;
         MTR_PWM_val = 0;
         MTR_sum_error = 0;
@@ -602,6 +602,7 @@ void taskDisplay( void * parameter)
           }
         } break;
       case STATE_TEMP_STEADY: {
+          PMNS_pemanas_state = PMNS_STATE_PID;
           lcd.setCursor(2, 0);
           lcd.print("Memanaskan pid 2");
 
@@ -673,10 +674,20 @@ void taskDisplay( void * parameter)
           } else {
             lcdResetCounter++;
           }
+//        kalo dari pause langsung ke rotasi
+//          if(pauseState = 1){
+//            PMNS_pemanas_state = PMNS_STATE_PID;
+//          }
+//          if (PMNS_flag_pid_done == 1) {
+//            PMNS_pemanas_state = PMNS_STATE_BANG;
+//            lcd.clear();
+//          }
         } break;
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
           MTR_pidTerm = 0;
+          PMNS_flag_pid_done = 0;
+          PMNS_state_counter = 0;
         } break;
       case STATE_DONE: { // timer done
           MTR_speed_req = 0;
@@ -1040,7 +1051,7 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
 
   if (setPoint > 75) {
     kp = 12;
-    ki = 0.004;
+    ki = 0.0045;
   }
   else {
     kp = 12;
