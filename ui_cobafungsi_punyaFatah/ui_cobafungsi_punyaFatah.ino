@@ -4,9 +4,6 @@
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
 #include "Wire.h"                 // I2C untuk LCD
-// #include <LiquidCrystal_PCF8574.h>// Alternative Library LCD I2C
-// #include "LiquidCrystal_I2C.h"    // include library LCD I2C
-
 #include <hd44780.h>
 #include <hd44780ioClass/hd44780_I2Cexp.h> // include i/o class header
 
@@ -195,11 +192,6 @@ volatile unsigned int PMNS_state_counter = 0;
 // q: Process Noise
 SimpleKalmanFilter simpleKalmanFilter(3, 3, 0.1);
 
-// Set the LCD address to 0x27 for a 20 chars and 4 line display
-// LiquidCrystal_I2C lcd(0x27, 20, 4);
-// LiquidCrystal_PCF8574 lcd(0x27);
-// TwoWire I2CBME = TwoWire(0);
-
 //PEMANAS
 OneWire oneWire(TEMP_SENSOR_PIN);
 DallasTemperature sensor(&oneWire);
@@ -230,7 +222,8 @@ void IRAM_ATTR onTimer() {
 /*---------------------------------------------------------------------*/
 void setup() {
   Serial.begin (115200);
-  //I2CBME.begin(I2C_SDA, I2C_SCL, 90000);
+
+  // Set the LCD address to 0x27 for a 20 chars and 4 line display
   Wire.begin();
   Wire.beginTransmission(0x27);
   lcd.begin(20, 4);
@@ -342,34 +335,41 @@ void taskInput( void * parameter )
     currentButtonStateWhite = digitalRead(switchPinWhite);
     vTaskDelay(30);
     
-    if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
-      //button is not being pushed
-      //do nothing
-    } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
-      //button is being pushed
-      // stateCondition ++;
-      // encoderValue = constantEncoderVal;
-      flagSignalGreen = HIGH;
-      // forward = 1;
-    }
+    if ((stateCondition == STATE_INPUT_TEMP) ||
+        (stateCondition == STATE_INPUT_RPM) ||
+        (stateCondition == STATE_INPUT_JAM) ||
+        (stateCondition == STATE_INPUT_MENIT) ||
+        (stateCondition == STATE_CONFIRM) ||
+        (stateCondition == STATE_IN_TABUNG)) {
+      if (currentButtonStateGreen == HIGH && lastButtonStateGreen == LOW) {
+        //button is not being pushed
+        //do nothing
+      } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
+        //button is being pushed
+        // stateCondition ++;
+        // encoderValue = constantEncoderVal;
+        flagSignalGreen = HIGH;
+        // forward = 1;
+      }
 
-    if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
-      //button is not being pushed
-      //do nothing
-    } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH) {
-      //button is being pushed
-      // stateCondition --;
-      // encoderValue = constantEncoderVal;
-      flagSignalBlack = HIGH;
-      // forward = 0;
-    }
+      if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
+        //button is not being pushed
+        //do nothing
+      } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH) {
+        //button is being pushed
+        // stateCondition --;
+        // encoderValue = constantEncoderVal;
+        flagSignalBlack = HIGH;
+        // forward = 0;
+      }
 
-    if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
-      //button is not being pushed
-      //do nothing
-    } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
-      //button is being pushed
-      stateCondition = STATE_INIT;
+      if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
+        //button is not being pushed
+        //do nothing
+      } else if (currentButtonStateWhite == LOW && lastButtonStateWhite == HIGH) {
+        //button is being pushed
+        stateCondition = STATE_INIT;
+      }
     }
 
     lastButtonStateBlack = currentButtonStateBlack;
@@ -396,13 +396,13 @@ void taskPause( void * parameter)
         stateCondition = STATE_PAUSE;
         pauseState = 1;
       } else {
-        stateCondition--;
+        stateCondition = STATE_TEMP_STEADY; //STATE_START_ROT;
         pauseState = 0;
+        MTR_PWM_val = 0;
+        MTR_sum_error = 0;
       }
     }
     lastButtonStateYellow = currentButtonStateYellow;
-
-    // Serial.println("Task Pause");
   }
 }
 
@@ -441,12 +441,12 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_TEMP: {
           temperatur = ((encoderValue / 4) % 66) + 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_RPM;
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_TEMP;
@@ -455,12 +455,12 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_RPM: {
           kecepatan = (encoderValue / 4) % 71 + 10;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_JAM;
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_TEMP;
@@ -469,12 +469,12 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_JAM: {
           jam = (encoderValue / 4) % 25;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_MENIT;
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_RPM;
@@ -483,13 +483,13 @@ void taskDisplay( void * parameter)
       case STATE_INPUT_MENIT: {
           menit = (encoderValue / 4) % 60;
           printToLCD(temperatur, kecepatan, jam, menit, stateCondition);
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_CONFIRM;
             lcd.clear();
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_JAM;
@@ -511,13 +511,13 @@ void taskDisplay( void * parameter)
           lcd.print("Ya");
           lcd.setCursor(15, 3);
           lcd.print("Tidak");
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_PANAS_PID;
             lcd.clear();
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_TEMP;
@@ -649,7 +649,7 @@ void taskDisplay( void * parameter)
             }
           }
           
-          if(PMNS_flag_pid_done == 1){
+          if(PMNS_flag_pid_done == 1) {
             stateCondition = STATE_START_ROT;
             lcdResetCounter = 100;
           }
@@ -730,6 +730,8 @@ void taskDisplay( void * parameter)
       case STATE_PAUSE: {  // pause
           MTR_speed_req = 0;
           MTR_pidTerm = 0;
+          PMNS_flag_pid_done = 0;
+          PMNS_state_counter = 0;
         } break;
       case STATE_DONE: { // timer done
           MTR_speed_req = 0;
@@ -930,17 +932,18 @@ void taskPMNS_MAIN(void* v) {
 #if ENABLE_PRINT_DEBUG
 void taskPrint(void* v) {
   char data[100];
-  const char stateConName[][15]={"INIT","TEMP","RPM",
-                          "JAM","MENIT","CONFIRM",
-                          "PNS-PID","IN-TBNG","PNS-PID2",
-                          "ROT","PAUSE","DONE"};
+  const char stateConName[][15] = {"INIT", "TEMP", "RPM",
+                          "JAM", "MENIT", "CONFIRM",
+                          "PNS-PID", "IN-TBNG", "PNS-PID2",
+                          "ROT", "PAUSE", "DONE"
+                          };
   Serial.begin(57600);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%s,%d,%d, %d,%f,%d,%f,%u,%u,%d",
+    sprintf(data, "%7s,%d,%d, %d,%.3f,%d,%f,%u,%u,%d",
             stateConName[stateCondition], PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
@@ -967,7 +970,7 @@ void printToLCD(int buffTemp, int buffKec, int buffJam, int buffMin, int buffSC)
   sprintf(hourVal, "%3u", (buffJam % 25));
   sprintf(minVal, "%3u", (buffMin % 60));
 
-  lcd.home();                    // show character at column 0, row 0
+  lcd.home();                             // show character at column 0, row 0
   lcd.print("Temperatur: ");              // show string on LCD
   lcd.setCursor(12, 0);                   // show character at column 12, row 0
   lcd.print(tempVal);                     // show the value
@@ -1087,8 +1090,17 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 12; //8
-  double ki = 0.003; //0.03
+  double kp;
+  double ki;
+
+  if (setPoint > 75) {
+    kp = 12;
+    ki = 0.0045;
+  }
+  else {
+    kp = 12;
+    ki = 0.003;
+  }
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
