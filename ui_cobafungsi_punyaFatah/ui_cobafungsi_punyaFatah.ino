@@ -585,7 +585,7 @@ void taskDisplay( void * parameter)
             }
           }
         } break;
-      case STATE_IN_TABUNG:{
+      case STATE_IN_TABUNG: {
           if (lcdResetCounter > 4) {
             // initialize the LCD
             lcd.clear();
@@ -609,7 +609,9 @@ void taskDisplay( void * parameter)
             flagSignalBlack = LOW;
           }
       } break;
-      case STATE_TEMP_STEADY:{
+      case STATE_TEMP_STEADY: {
+          PMNS_pemanas_state = PMNS_STATE_PID;
+
           // buffer variable
           unsigned int newTempForPrint = int(TempRead);
           unsigned int oldTempForPrint;
@@ -649,8 +651,9 @@ void taskDisplay( void * parameter)
             }
           }
           
-          if(PMNS_flag_pid_done == 1) {
+          if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_START_ROT;
+            PMNS_pemanas_state = PMNS_STATE_BANG;
             lcdResetCounter = 100;
           }
       } break;
@@ -949,7 +952,7 @@ void taskPrint(void* v) {
             kecepatan, MTR_speed_actual,
             durasi, timerCounter, MTR_PWM_val);
     Serial.println(data);
-    vTaskDelay(1500);
+    vTaskDelay(10);
   }
 }
 #endif
