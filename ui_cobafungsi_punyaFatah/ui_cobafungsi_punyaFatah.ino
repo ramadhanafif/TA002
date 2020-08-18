@@ -547,8 +547,6 @@ void taskDisplay( void * parameter)
 
           if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_IN_TABUNG;
-            PMNS_flag_pid_done = 0;
-            PMNS_state_counter = 0;
           }
 
           if (lcdResetCounter > 6) {
@@ -604,6 +602,8 @@ void taskDisplay( void * parameter)
           if (flagSignalGreen == HIGH){
             flagSignalGreen = LOW;
             stateCondition = STATE_TEMP_STEADY;
+            PMNS_flag_pid_done = 0;
+            PMNS_state_counter = 0;
           }
           else if (flagSignalBlack == HIGH){
             flagSignalBlack = LOW;
@@ -952,7 +952,7 @@ void taskPrint(void* v) {
             kecepatan, MTR_speed_actual,
             durasi, timerCounter, MTR_PWM_val);
     Serial.println(data);
-    vTaskDelay(10);
+    vTaskDelay(1500);
   }
 }
 #endif
