@@ -1094,13 +1094,21 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double kp;
   double ki;
 
-  if (setPoint > 60) {
+  if (setPoint <= 60){
+    kp = 12;
+    ki = 0.003;
+  }
+  else if ((setPoint > 60) && (setPoint <=75)) {
     kp = 12;
     ki = 0.0045;
   }
-  else {
+  else if ((setPoint > 75) && (setPoint <=85)){
     kp = 12;
-    ki = 0.003;
+    ki = 0.0065;
+  }
+  else{
+    kp = 12;
+    ki = 0.007;
   }
 
   currentTime = millis() / 1000;                      //get current time
