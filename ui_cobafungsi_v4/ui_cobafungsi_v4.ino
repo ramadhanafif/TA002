@@ -221,8 +221,6 @@ void IRAM_ATTR onTimer() {
 /*-------------------------------SETUP---------------------------------*/
 /*---------------------------------------------------------------------*/
 void setup() {
-  Serial.begin (115200);
-
   // Set the LCD address to 0x27 for a 20 chars and 4 line display
   Wire.begin();
   Wire.beginTransmission(0x27);
@@ -595,7 +593,7 @@ void taskDisplay( void * parameter)
           BaseType_t isBuzzerRing;
 
           if (isBuzzerRing == pdFALSE)
-            isBuzzerRing = xTaskCreate(ringBuzz, "Buzzer in tabung", 20 * 50, 3, tskIDLE_PRIORITY, NULL);
+            isBuzzerRing = xTaskCreate(ringBuzz, "Buzzer in tabung", 20 * 50, (void*) 3, tskIDLE_PRIORITY, NULL);
 
           if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
@@ -940,19 +938,19 @@ void taskPrint(void* v) {
                                    "ROT", "PAUSE", "DONE"
                                   };
 
-  Serial.begin(115200);
+  Serial.begin(57600);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%7s,%d,%d, %d,%.3f,%d,%f,%u,%u,%d",
+    sprintf(data, "%8s, %d,%d, %d,%.3f,%d,%.3f,%u,%u",
             stateConName[stateCondition], PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
-            durasi, timerCounter, MTR_PWM_val);
+            durasi, timerCounter);
     Serial.println(data);
-    vTaskDelay(1500);
+    vTaskDelay(2000);
   }
 }
 #endif
@@ -1143,8 +1141,9 @@ void vTaskControl(TaskHandle_t xHandle, bool* statusVar, unsigned int command) {
 
 void ringBuzz (void* v) {
   pinMode(BUZZER_PIN, OUTPUT);
-  
-  for (int i = 0; i < int (v); i++){ 
+
+  for (int i = 0; i < int (v); i++) {
+    digitalWrite(BUZZER_PIN, LOW);
     vTaskDelay(150);
 
     digitalWrite(BUZZER_PIN, HIGH);
@@ -1159,9 +1158,8 @@ void ringBuzz (void* v) {
 
     digitalWrite(BUZZER_PIN, HIGH);
     vTaskDelay(500);
-    digitalWrite(BUZZER_PIN, LOW);
   }
-  
+
   digitalWrite(BUZZER_PIN, HIGH);
   vTaskDelay(500);
   digitalWrite(BUZZER_PIN, LOW);
