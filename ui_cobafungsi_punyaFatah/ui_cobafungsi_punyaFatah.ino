@@ -1,5 +1,5 @@
-#define ENABLE_PRINT_DEBUG 1
-#define BYPASS_TO_MAIN 0
+#define ENABLE_PRINT_DEBUG 0
+#define BYPASS_TO_MAIN 1
 /*---------------------------------------------------------------------*/
 /*-----------------------------LIBRARIES-------------------------------*/
 /*---------------------------------------------------------------------*/
@@ -155,9 +155,9 @@ const int MTR_resolution = 8;
 // PID controller
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
-double MTR_Kp = 2;
-double MTR_Kd = 0.1;
-double MTR_Ki = 0.1;
+double MTR_Kp = 0.1136;//4;//2;
+double MTR_Kd = 0.86;//0.1;
+double MTR_Ki = 0.004;//0.109;//0.1;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -625,8 +625,8 @@ void taskDisplay( void * parameter)
           if (lcdResetCounter > 6) {
             // initialize the LCD
             lcd.clear();
-            lcd.setCursor(2, 0);
-            lcd.print("Memanaskan pid 2");
+            lcd.home();
+            lcd.print("Memanaskan 2");
             vTaskDelay(50);
             lcd.setCursor(0, 1);
             lcd.print("Suhu target: ");
@@ -693,13 +693,13 @@ void taskDisplay( void * parameter)
           // lcd.print(hourLeft);
           // lcd.print(minuteLeft);
 
-          if (lcdResetCounter > 8) {
+          if (lcdResetCounter > 30) {
             // initialize the LCD
             lcd.clear();
             lcd.home();
             lcd.print("Set point: ");
             vTaskDelay(50);
-            lcd.setCursor(12, 0);
+            lcd.setCursor(10, 0);
             lcd.print(setSpeed);
             lcd.print(setTemp);
             vTaskDelay(50);
@@ -709,9 +709,9 @@ void taskDisplay( void * parameter)
             lcd.setCursor(0, 2);
             lcd.print("Suhu : ");
             vTaskDelay(50);
-            lcd.setCursor(12, 1);
+            lcd.setCursor(7, 1);
             lcd.print(speedActual);
-            lcd.setCursor(12, 2);
+            lcd.setCursor(7, 2);
             lcd.print(tempActual);
             oldTempForPrint = newTempForPrint;
             oldSpeedForPrint = newSpeedForPrint;
@@ -719,11 +719,10 @@ void taskDisplay( void * parameter)
             lcdResetCounter = 0;
           } else {
             lcdResetCounter++;
-            if ( (newTempForPrint != oldTempForPrint) || 
-                (newSpeedForPrint != oldSpeedForPrint) ) {
-              lcd.setCursor(12, 1);
+            if (newTempForPrint != oldTempForPrint) {
+              lcd.setCursor(7, 1);
               lcd.print(speedActual);
-              lcd.setCursor(12, 2);
+              lcd.setCursor(7, 2);
               lcd.print(tempActual);
               oldTempForPrint = newTempForPrint;
               oldSpeedForPrint = newSpeedForPrint;
@@ -782,9 +781,11 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       // PWM signal
       ledcWrite(MTR_pwmChannel, MTR_PWM_val);
 
-      // printMotorInfo();
+      printMotorInfo();
       // Serial.println("Task PWM Calculator");
     }
+    
+    ledcWrite(MTR_pwmChannel, MTR_PWM_val);
     vTaskDelay(40);
   }
 }
@@ -952,7 +953,7 @@ void taskPrint(void* v) {
             kecepatan, MTR_speed_actual,
             durasi, timerCounter, MTR_PWM_val);
     Serial.println(data);
-    vTaskDelay(1500);
+    vTaskDelay(5000);
   }
 }
 #endif
