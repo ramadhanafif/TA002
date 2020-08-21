@@ -241,7 +241,7 @@ void setup() {
     NULL,                     /* Parameter passed as input of the task */
     PRIORITY_TASK_SPEEDREAD,  /* Priority of the task. */
     &TaskHandle_SpeadRead);   /* Task handle. */
-    
+
 
 #if ENABLE_PRINT_DEBUG
   xTaskCreate(
@@ -325,7 +325,7 @@ void taskInput( void * parameter )
   const TickType_t xFrequency = 30;
 
   vTaskControl(TaskHandle_Input, &IsRun_Input, SUSPEND); // (?) emang perlu?
-  
+
   for ( ; ; ) {
     vTaskDelayUntil( &xLastWakeTimeSpeedRead, xFrequency );
 
@@ -334,7 +334,7 @@ void taskInput( void * parameter )
     currentButtonStateGreen = digitalRead(switchPinGreen);
     currentButtonStateWhite = digitalRead(switchPinWhite);
     vTaskDelay(30);
-    
+
     if ((stateCondition == STATE_INPUT_TEMP) ||
         (stateCondition == STATE_INPUT_RPM) ||
         (stateCondition == STATE_INPUT_JAM) ||
@@ -495,15 +495,6 @@ void taskDisplay( void * parameter)
             stateCondition = STATE_INPUT_JAM;
           }
         } break;
-      // case STATE_WAIT_NEXT: {
-      //     if (forward) {
-      //       lcd.clear();
-      //       stateCondition ++;
-      //     } else {
-      //       lcd.clear();
-      //       stateCondition --;
-      //     }
-      //   } break;
       case STATE_CONFIRM: {
           lcd.home();
           lcd.print("Lanjutkan Pengadukan");
@@ -540,7 +531,7 @@ void taskDisplay( void * parameter)
           sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
 
           //PERINTAH PANAS MASUK SINI
-          if (PMNS_pemanas_state != PMNS_STATE_PID){
+          if (PMNS_pemanas_state != PMNS_STATE_PID) {
             vTaskControl(TaskHandle_PMNS, &IsRun_PMNS, RESUME);
             PMNS_pemanas_state = PMNS_STATE_PID;
           }
@@ -599,16 +590,16 @@ void taskDisplay( void * parameter)
             lcdResetCounter++;
           }
 
-          if (flagSignalGreen == HIGH){
+          if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             stateCondition = STATE_TEMP_STEADY;
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
           }
-          else if (flagSignalBlack == HIGH){
+          else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
           }
-      } break;
+        } break;
       case STATE_TEMP_STEADY: {
           PMNS_pemanas_state = PMNS_STATE_PID;
 
@@ -621,7 +612,7 @@ void taskDisplay( void * parameter)
           // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
           sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
-          
+
           if (lcdResetCounter > 6) {
             // initialize the LCD
             lcd.clear();
@@ -650,13 +641,13 @@ void taskDisplay( void * parameter)
               oldTempForPrint = newTempForPrint;
             }
           }
-          
+
           if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_START_ROT;
             PMNS_pemanas_state = PMNS_STATE_BANG;
             lcdResetCounter = 100;
           }
-      } break;
+        } break;
       case STATE_START_ROT: {
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, RESUME);
           vTaskControl(TaskHandle_PWMCalculator, &IsRun_PWMCalculator, RESUME);
@@ -719,8 +710,14 @@ void taskDisplay( void * parameter)
             lcdResetCounter = 0;
           } else {
             lcdResetCounter++;
+<<<<<<< HEAD
             if (newTempForPrint != oldTempForPrint) {
               lcd.setCursor(7, 1);
+=======
+            if ( (newTempForPrint != oldTempForPrint) ||
+                 (newSpeedForPrint != oldSpeedForPrint) ) {
+              lcd.setCursor(12, 1);
+>>>>>>> ba9378cac791d1c0b34cacf7e72452f971ea44a0
               lcd.print(speedActual);
               lcd.setCursor(7, 2);
               lcd.print(tempActual);
@@ -776,7 +773,7 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       MTR_sum_error += MTR_error;
       MTR_sum_error = constrain(MTR_sum_error, -2000, 2000);
       MTR_PWM_val = constrain(MTR_pidTerm, 0, 255);
-    
+
 
       // PWM signal
       ledcWrite(MTR_pwmChannel, MTR_PWM_val);
@@ -937,10 +934,10 @@ void taskPMNS_MAIN(void* v) {
 void taskPrint(void* v) {
   char data[100];
   const char stateConName[][15] = {"INIT", "TEMP", "RPM",
-                          "JAM", "MENIT", "CONFIRM",
-                          "PNS-PID", "IN-TBNG", "PNS-PID2",
-                          "ROT", "PAUSE", "DONE"
-                          };
+                                   "JAM", "MENIT", "CONFIRM",
+                                   "PNS-PID", "IN-TBNG", "PNS-PID2",
+                                   "ROT", "PAUSE", "DONE"
+                                  };
   Serial.begin(57600);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
