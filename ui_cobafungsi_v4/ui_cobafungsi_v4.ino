@@ -117,7 +117,7 @@ bool IsRun_PWMCalculator = RUNNING;
 /*-----------------------------VARIABLES-------------------------------*/
 /*---------------------------------------------------------------------*/
 // universal needs
-int stateCondition = STATE_INIT;
+int stateCondition = STATE-STATE_INIT;
 int temperatur = temConstant;
 int kecepatan = kecConstant;
 int jam = jamConstant;
@@ -227,7 +227,7 @@ void setup() {
   lcd.begin(20, 4);
 
   // timer
-  pinMode(BUZZER_PIN, OUTPUT);  
+  pinMode(BUZZER_PIN, OUTPUT);
   timer = timerBegin(0, 80, true);
   timerAttachInterrupt(timer, &onTimer, true);
   timerAlarmWrite(timer, 1000000, true);
@@ -673,22 +673,23 @@ void taskDisplay( void * parameter)
           char speedActual[4];
           char setTemp[4];
           char setSpeed[4];
-          //char hourLeft[4];
-          //char minuteLeft[4];
+          char hourLeft[4];
+          char minuteLeft[4];
 
           // convert to string
           sprintf(tempActual, "%3d", newTempForPrint);
           sprintf(speedActual, "%3d", newSpeedForPrint);
           sprintf(setTemp, "%3d", temperatur);
           sprintf(setSpeed, "%3d", kecepatan);
-          //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
-          //sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
+          sprintf(hourLeft, "%02d:", (int)((durasi - timerCounter) / 3600));
+          sprintf(minuteLeft, "%02d", (((durasi - timerCounter) - ((durasi - timerCounter) / 3600) * 3600) / 60));
 
-          // lcd.setCursor(0, 3);
-          // lcd.print("Sisa waktu : ");
-          // lcd.setCursor(14, 3);
-          // lcd.print(hourLeft);
-          // lcd.print(minuteLeft);
+
+          lcd.setCursor(0, 3);
+          lcd.print("Sisa waktu : ");
+          lcd.setCursor(13, 3);
+          lcd.print(hourLeft);
+          lcd.print(minuteLeft);
 
           if (lcdResetCounter > 8) {
             // initialize the LCD
@@ -1094,19 +1095,19 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double kp;
   double ki;
 
-  if (setPoint <= 60){
+  if (setPoint <= 60) {
     kp = 12;
     ki = 0.003;
   }
-  else if ((setPoint > 60) && (setPoint <=75)) {
+  else if ((setPoint > 60) && (setPoint <= 75)) {
     kp = 12;
     ki = 0.0045;
   }
-  else if ((setPoint > 75) && (setPoint <=85)){
+  else if ((setPoint > 75) && (setPoint <= 85)) {
     kp = 12;
     ki = 0.0065;
   }
-  else{
+  else {
     kp = 12;
     ki = 0.007;
   }
