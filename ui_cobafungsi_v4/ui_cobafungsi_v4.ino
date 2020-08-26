@@ -117,7 +117,7 @@ bool IsRun_PWMCalculator = RUNNING;
 /*-----------------------------VARIABLES-------------------------------*/
 /*---------------------------------------------------------------------*/
 // universal needs
-int stateCondition = STATE-STATE_INIT;
+int stateCondition = STATE_INIT;
 int temperatur = temConstant;
 int kecepatan = kecConstant;
 int jam = jamConstant;
@@ -1092,25 +1092,25 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp;
-  double ki;
+  double kp = 12;
+  double ki = (0.1057 * inp - 2.4143) / 1000;
 
-  if (setPoint <= 60) {
-    kp = 12;
-    ki = 0.003;
-  }
-  else if ((setPoint > 60) && (setPoint <= 75)) {
-    kp = 12;
-    ki = 0.0045;
-  }
-  else if ((setPoint > 75) && (setPoint <= 85)) {
-    kp = 12;
-    ki = 0.0065;
-  }
-  else {
-    kp = 12;
-    ki = 0.007;
-  }
+  // if (inp <= 60) {
+  //   kp = 12;
+  //   ki = 0.003;
+  // }
+  // else if ((inp > 60) && (inp <= 75)) {
+  //   kp = 12;
+  //   ki = 0.0045;
+  // }
+  // else if ((inp > 75) && (inp <= 85)) {
+  //   kp = 12;
+  //   ki = 0.0065;
+  // }
+  // else {
+  //   kp = 12;
+  //   ki = 0.007;
+  // }
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
