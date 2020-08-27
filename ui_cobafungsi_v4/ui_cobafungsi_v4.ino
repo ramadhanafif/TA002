@@ -56,8 +56,6 @@
 
 #define BB 0
 
-#define PMNS_WAIT_TIME        15
-#define PMNS_ON_TIME          40
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
@@ -832,6 +830,8 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 
 unsigned int PMNS_ssr = 2;
 unsigned int PMNS_counter = 0;
+unsigned int PMNS_wait_time = 15;
+unsigned int PMNS_on_time; 
 
 void taskPMNS_MAIN(void* v) {
   double prevtime = millis();
@@ -897,14 +897,21 @@ void taskPMNS_MAIN(void* v) {
             ledcDetachPin(SSR_PIN);
             pwm_attach = 0;
           }
-
+          
+          if (setPoint < 50){
+            PMNS_on_time = 5;
+          }
+          else{
+            PMNS_on_time = 40;
+          }
+          
           switch (PMNS_ssr)
           {
             case 0: //nunggu sampe turun dari kelebihan suhu
               digitalWrite(SSR_PIN, LOW);
               if (TempRead <= setPoint - BB) {
                 PMNS_ssr = 1; //change state
-                PMNS_counter = PMNS_ON_TIME;
+                PMNS_counter = PMNS_on_time;
               }
               break;
             case 1: //decrement from PMNS_ON_TIME until 0
@@ -918,7 +925,7 @@ void taskPMNS_MAIN(void* v) {
             case 2: //nunggu selama WAIT TIME
               digitalWrite(SSR_PIN, LOW);
               PMNS_counter++;
-              if (PMNS_counter >= PMNS_WAIT_TIME)
+              if (PMNS_counter >= PMNS_wait_time)
               {
                 PMNS_ssr = 0;
               }
@@ -945,7 +952,7 @@ void taskPrint(void* v) {
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%8s, %d,%d, %d,%.3f,%d,%.3f,%u,%u",
+    sprintf(data, "%8s,%d,%d,%d,%.3f,%d,%.3f,%u,%u",
             stateConName[stateCondition], PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
@@ -1092,25 +1099,25 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double elapsedTime = 0;
   double currentTime;
 
-  double kp = 12;
-  double ki = (0.1057 * inp - 2.4143) / 1000;
+  double kp;
+  double ki;
 
-  // if (inp <= 60) {
-  //   kp = 12;
-  //   ki = 0.003;
-  // }
-  // else if ((inp > 60) && (inp <= 75)) {
-  //   kp = 12;
-  //   ki = 0.0045;
-  // }
-  // else if ((inp > 75) && (inp <= 85)) {
-  //   kp = 12;
-  //   ki = 0.0065;
-  // }
-  // else {
-  //   kp = 12;
-  //   ki = 0.007;
-  // }
+  if (setPoint <= 60) {
+    kp = 12;
+    ki = 0.003;
+  }
+  else if ((setPoint > 60) && (setPoint <= 75)) {
+    kp = 12;
+    ki = 0.0045;
+  }
+  else if ((setPoint > 75) && (setPoint <= 85)) {
+    kp = 12;
+    ki = 0.0065;
+  }
+  else {
+    kp = 12;
+    ki = 0.007;
+  }
 
   currentTime = millis() / 1000;                      //get current time
   elapsedTime = (currentTime - *previousTime);        //compute time elapsed from previous computation
