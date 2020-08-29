@@ -591,7 +591,12 @@ void taskDisplay( void * parameter)
           BaseType_t isBuzzerRing;
 
           if (isBuzzerRing == pdFALSE)
-            isBuzzerRing = xTaskCreate(ringBuzz, "Buzzer in tabung", 20 * 50, (void*) 3, tskIDLE_PRIORITY, NULL);
+            isBuzzerRing = xTaskCreate(ringBuzz,
+                                       "Buzzer in tabung",
+                                       1000,
+                                       (void*) 3,
+                                       tskIDLE_PRIORITY,
+                                       NULL);
 
           if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
@@ -1155,10 +1160,10 @@ void vTaskControl(TaskHandle_t xHandle, bool* statusVar, unsigned int command) {
   }
 }
 
-void ringBuzz (void* v) {
+void ringBuzz (void* repeat) {
   pinMode(BUZZER_PIN, OUTPUT);
 
-  for (int i = 0; i < int (v); i++) {
+  for (int i = 0; i < int (repeat); i++) {
     digitalWrite(BUZZER_PIN, LOW);
     vTaskDelay(150);
 
