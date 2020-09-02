@@ -153,9 +153,9 @@ const int MTR_resolution = 8;
 // PID controller
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
-double MTR_Kp = 2;
-double MTR_Kd = 0.1;
-double MTR_Ki = 0.1;
+double MTR_Kp = 2.95;
+double MTR_Kd = 0;
+double MTR_Ki = 0.2;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -486,6 +486,7 @@ void taskDisplay( void * parameter)
             encoderValue = constantEncoderVal;
             stateCondition = STATE_CONFIRM;
             lcd.clear();
+            vTaskDelay(150);
           }
           else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
@@ -538,9 +539,10 @@ void taskDisplay( void * parameter)
             stateCondition = STATE_IN_TABUNG;
           }
 
-          if (lcdResetCounter > 6) {
+          if (lcdResetCounter > 35) {
             // initialize the LCD
             lcd.clear();
+            vTaskDelay(150);
             lcd.home();
             lcd.print("Memanaskan ");
             vTaskDelay(50);
@@ -552,33 +554,28 @@ void taskDisplay( void * parameter)
             vTaskDelay(50);
             lcd.setCursor(12, 1);
             lcd.print(bufferForPrintTemp);
-            // vTaskDelay(50);
             lcd.setCursor(12, 2);
             lcd.print(bufferForprintTempRead);
-            // vTaskDelay(50);
             oldTempForPrint = newTempForPrint;
-            //tempForPrint = 0;
             lcdResetCounter = 0;
           } else {
             lcdResetCounter++;
             if (newTempForPrint != oldTempForPrint) {
               lcd.setCursor(12, 1);
               lcd.print(bufferForPrintTemp);
-              // vTaskDelay(50);
               lcd.setCursor(12, 2);
               lcd.print(bufferForprintTempRead);
-              // vTaskDelay(50);
               oldTempForPrint = newTempForPrint;
             }
           }
         } break;
       case STATE_IN_TABUNG: {
-          if (lcdResetCounter > 4) {
+          if (lcdResetCounter > 15) {
             // initialize the LCD
             lcd.clear();
-            vTaskDelay(50);
-            lcd.setCursor(2, 0);
-            lcd.print("Masukkan tabung!");
+            vTaskDelay(150);
+            lcd.home();
+            lcd.print("Masukan tabung!");
             vTaskDelay(50);
             lcd.setCursor(0, 3);
             lcd.print("Lanjut");
@@ -603,11 +600,11 @@ void taskDisplay( void * parameter)
             stateCondition = STATE_TEMP_STEADY;
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
-          }
-          else if (flagSignalBlack == HIGH) {
+            lcdResetCounter = 100;
+          } else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
+            lcdResetCounter = 100;
           }
-
         } break;
       case STATE_TEMP_STEADY: {
           PMNS_pemanas_state = PMNS_STATE_PID;
@@ -622,11 +619,12 @@ void taskDisplay( void * parameter)
           sprintf(bufferForPrintTemp, "%3d", temperatur);
           sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
 
-          if (lcdResetCounter > 6) {
+          if (lcdResetCounter > 25) {
             // initialize the LCD
             lcd.clear();
-            lcd.setCursor(2, 0);
-            lcd.print("Memanaskan pid 2");
+            vTaskDelay(150);
+            lcd.home();
+            lcd.print("Memanaskan 2");
             vTaskDelay(50);
             lcd.setCursor(0, 1);
             lcd.print("Suhu target: ");
@@ -694,21 +692,21 @@ void taskDisplay( void * parameter)
           lcd.print(hourLeft);
           lcd.print(minuteLeft);
 
-          if (lcdResetCounter > 8) {
+          if (lcdResetCounter > 20) {
             // initialize the LCD
             lcd.clear();
             lcd.home();
-            lcd.print("Set point: ");
+            lcd.print("Set point  : ");
             vTaskDelay(50);
             lcd.setCursor(12, 0);
             lcd.print(setSpeed);
             lcd.print(setTemp);
             vTaskDelay(50);
             lcd.setCursor(0, 1);
-            lcd.print("Kec  : ");
+            lcd.print("Kecepatan  : ");
             vTaskDelay(50);
             lcd.setCursor(0, 2);
-            lcd.print("Suhu : ");
+            lcd.print("Suhu       : ");
             vTaskDelay(50);
             lcd.setCursor(12, 1);
             lcd.print(speedActual);
@@ -720,8 +718,7 @@ void taskDisplay( void * parameter)
             lcdResetCounter = 0;
           } else {
             lcdResetCounter++;
-            if ( (newTempForPrint != oldTempForPrint) ||
-                 (newSpeedForPrint != oldSpeedForPrint) ) {
+            if (newTempForPrint != oldTempForPrint) {
               lcd.setCursor(12, 1);
               lcd.print(speedActual);
               lcd.setCursor(12, 2);
@@ -736,8 +733,44 @@ void taskDisplay( void * parameter)
           MTR_pidTerm = 0;
           PMNS_flag_pid_done = 0;
           PMNS_state_counter = 0;
+          lcd.clear();
+          vTaskDelay(150);
+          lcd.print("PAUSE");
+          lcdResetCounter = 100;
         } break;
       case STATE_DONE: { // timer done
+          // buffer variable
+          unsigned int newTempForPrint = int(TempRead);
+          unsigned int oldTempForPrint;
+          char bufferForPrintTemp[4];
+          char bufferForprintTempRead[4];
+
+          // convert to string
+          sprintf(bufferForPrintTemp, "%3d", temperatur);
+          sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
+
+          if (lcdResetCounter > 8) {
+            lcd.clear();
+            vTaskDelay(150);
+            lcd.home();
+            lcd.print("Proses selesai");
+            vTaskDelay(50);
+            lcd.setCursor(0, 2);
+            lcd.print("Suhu aktual: ");
+            vTaskDelay(50);
+            lcd.setCursor(12, 2);
+            lcd.print(bufferForprintTempRead);
+            oldTempForPrint = newTempForPrint;
+            lcdResetCounter = 0;
+          } else {
+            lcdResetCounter++;
+            if (newTempForPrint != oldTempForPrint) {
+              lcd.setCursor(12, 2);
+              lcd.print(bufferForprintTempRead);
+              oldTempForPrint = newTempForPrint;
+            }
+          }
+
           MTR_speed_req = 0;
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
           vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
@@ -836,7 +869,7 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 unsigned int PMNS_ssr = 2;
 unsigned int PMNS_counter = 0;
 unsigned int PMNS_wait_time = 15;
-unsigned int PMNS_on_time; 
+unsigned int PMNS_on_time;
 
 void taskPMNS_MAIN(void* v) {
   double prevtime = millis();
@@ -902,14 +935,14 @@ void taskPMNS_MAIN(void* v) {
             ledcDetachPin(SSR_PIN);
             pwm_attach = 0;
           }
-          
-          if (setPoint < 50){
+
+          if (setPoint < 50) {
             PMNS_on_time = 5;
           }
-          else{
+          else {
             PMNS_on_time = 40;
           }
-          
+
           switch (PMNS_ssr)
           {
             case 0: //nunggu sampe turun dari kelebihan suhu
