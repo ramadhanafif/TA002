@@ -537,6 +537,7 @@ void taskDisplay( void * parameter)
 
           if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_IN_TABUNG;
+            SimpleRingBuzz(3);
           }
 
           if (lcdResetCounter > 35) {
@@ -585,15 +586,16 @@ void taskDisplay( void * parameter)
             lcdResetCounter++;
           }
 
-          BaseType_t isBuzzerRing;
+          // BaseType_t isBuzzerRing;
 
-          if (isBuzzerRing == pdFALSE)
-            isBuzzerRing = xTaskCreate(ringBuzz,
-                                       "Buzzer in tabung",
-                                       1000,
-                                       (void*) 3,
-                                       tskIDLE_PRIORITY,
-                                       NULL);
+          // if (isBuzzerRing == pdFALSE)
+          //   isBuzzerRing = xTaskCreate(ringBuzz,
+          //                              "Buzzer in tabung",
+          //                              1000,
+          //                              (void*) 3,
+          //                              tskIDLE_PRIORITY,
+          //                              NULL);
+
 
           if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
@@ -774,14 +776,9 @@ void taskDisplay( void * parameter)
           MTR_speed_req = 0;
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
           vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
-          if ((timerCounter - durasi) % 10 == 0)
+          if ((timerCounter - durasi) % 15*60 == 0)
           {
-            for (int m = 0; m < 3; m++) {
-              digitalWrite(BUZZER_PIN, HIGH);
-              vTaskDelay(150);
-              digitalWrite(BUZZER_PIN, LOW);
-              vTaskDelay(50);
-            }
+            SimpleRingBuzz(25);
           }
         } break;
     }
@@ -1219,4 +1216,31 @@ void ringBuzz (void* repeat) {
   vTaskDelay(500);
   digitalWrite(BUZZER_PIN, LOW);
   vTaskDelete(NULL);
+}
+
+void SimpleRingBuzz (int repeat) {
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  for (int i = 0; i < int (repeat); i++) {
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(150);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(200);
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(50);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(200);
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(50);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(500);
+  }
+
+  digitalWrite(BUZZER_PIN, HIGH);
+  vTaskDelay(500);
+  digitalWrite(BUZZER_PIN, LOW);
+
 }
