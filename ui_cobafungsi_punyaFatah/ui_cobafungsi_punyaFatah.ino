@@ -56,8 +56,6 @@
 
 #define BB 0
 
-#define PMNS_WAIT_TIME        15
-#define PMNS_ON_TIME          40
 #define PMNS_PERIOD_PWM       400
 #define PMNS_SET_POINT_DEBUG  80
 
@@ -76,7 +74,7 @@ MedianFilter<double> medianFilter(3);
 /*---------------------------------------------------------------------*/
 /*------------------------------TIMER----------------------------------*/
 /*---------------------------------------------------------------------*/
-hw_timer_t * timer = NULL;
+hw_timer_t* timer = NULL;
 
 
 /*---------------------------------------------------------------------*/
@@ -155,9 +153,9 @@ const int MTR_resolution = 8;
 // PID controller
 int MTR_speed_req = 0;    // in rpm
 float MTR_speed_actual = 0;   // in rpm
-double MTR_Kp = 0.1136;//4;//2;
-double MTR_Kd = 0.86;//0.1;
-double MTR_Ki = 0.004;//0.109;//0.1;
+double MTR_Kp = 2.95;
+double MTR_Kd = 0;
+double MTR_Ki = 0.2;
 float MTR_error = 0;
 float MTR_last_error = 0;
 float MTR_sum_error = 0;
@@ -221,8 +219,6 @@ void IRAM_ATTR onTimer() {
 /*-------------------------------SETUP---------------------------------*/
 /*---------------------------------------------------------------------*/
 void setup() {
-  Serial.begin (115200);
-
   // Set the LCD address to 0x27 for a 20 chars and 4 line display
   Wire.begin();
   Wire.beginTransmission(0x27);
@@ -395,7 +391,9 @@ void taskPause( void * parameter)
       if (pauseState == 0) {
         stateCondition = STATE_PAUSE;
         pauseState = 1;
+        timerDetachInterrupt(timer);
       } else {
+        timerAttachInterrupt(timer, &onTimer, true);
         stateCondition = STATE_TEMP_STEADY; //STATE_START_ROT;
         pauseState = 0;
         MTR_PWM_val = 0;
@@ -590,6 +588,16 @@ void taskDisplay( void * parameter)
             lcdResetCounter++;
           }
 
+          BaseType_t isBuzzerRing;
+
+          if (isBuzzerRing == pdFALSE)
+            isBuzzerRing = xTaskCreate(ringBuzz,
+                                       "Buzzer in tabung",
+                                       1000,
+                                       (void*) 3,
+                                       tskIDLE_PRIORITY,
+                                       NULL);
+
           if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             stateCondition = STATE_TEMP_STEADY;
@@ -599,6 +607,7 @@ void taskDisplay( void * parameter)
           else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
           }
+
         } break;
       case STATE_TEMP_STEADY: {
           PMNS_pemanas_state = PMNS_STATE_PID;
@@ -613,7 +622,7 @@ void taskDisplay( void * parameter)
           sprintf(bufferForPrintTemp, "%3d", temperatur);
           sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
 
-          if (lcdResetCounter > 6) {
+          if (lcdResetCounter > 60) {
             // initialize the LCD
             lcd.clear();
             lcd.home();
@@ -667,22 +676,23 @@ void taskDisplay( void * parameter)
           char speedActual[4];
           char setTemp[4];
           char setSpeed[4];
-          //char hourLeft[4];
-          //char minuteLeft[4];
+          char hourLeft[4];
+          char minuteLeft[4];
 
           // convert to string
           sprintf(tempActual, "%3d", newTempForPrint);
           sprintf(speedActual, "%3d", newSpeedForPrint);
           sprintf(setTemp, "%3d", temperatur);
           sprintf(setSpeed, "%3d", kecepatan);
-          //sprintf(hourLeft, "%3d", ((durasi - timerCounter) % 3600));
-          //sprintf(minuteLeft, "%3d", (((durasi - timerCounter) - ((durasi-timerCounter) % 3600) * 3600) % 60));
+          sprintf(hourLeft, "%02d:", (int)((durasi - timerCounter) / 3600));
+          sprintf(minuteLeft, "%02d", (((durasi - timerCounter) - ((durasi - timerCounter) / 3600) * 3600) / 60));
 
-          // lcd.setCursor(0, 3);
-          // lcd.print("Sisa waktu : ");
-          // lcd.setCursor(14, 3);
-          // lcd.print(hourLeft);
-          // lcd.print(minuteLeft);
+
+          lcd.setCursor(0, 3);
+          lcd.print("Sisa waktu : ");
+          lcd.setCursor(13, 3);
+          lcd.print(hourLeft);
+          lcd.print(minuteLeft);
 
           if (lcdResetCounter > 30) {
             // initialize the LCD
@@ -710,16 +720,10 @@ void taskDisplay( void * parameter)
             lcdResetCounter = 0;
           } else {
             lcdResetCounter++;
-<<<<<<< HEAD
-            if (newTempForPrint != oldTempForPrint) {
-              lcd.setCursor(7, 1);
-=======
-            if ( (newTempForPrint != oldTempForPrint) ||
-                 (newSpeedForPrint != oldSpeedForPrint) ) {
+            if ( (newTempForPrint != oldTempForPrint) ) {
               lcd.setCursor(12, 1);
->>>>>>> ba9378cac791d1c0b34cacf7e72452f971ea44a0
               lcd.print(speedActual);
-              lcd.setCursor(7, 2);
+              lcd.setCursor(12, 2);
               lcd.print(tempActual);
               oldTempForPrint = newTempForPrint;
               oldSpeedForPrint = newSpeedForPrint;
@@ -778,11 +782,9 @@ void taskPWMCalculator(void *pvParameters)  // This is a task.
       // PWM signal
       ledcWrite(MTR_pwmChannel, MTR_PWM_val);
 
-      printMotorInfo();
+      // printMotorInfo();
       // Serial.println("Task PWM Calculator");
     }
-    
-    ledcWrite(MTR_pwmChannel, MTR_PWM_val);
     vTaskDelay(40);
   }
 }
@@ -832,6 +834,8 @@ void taskSpeedRead_rpm(void *pvParameters)  // This is a task.
 
 unsigned int PMNS_ssr = 2;
 unsigned int PMNS_counter = 0;
+unsigned int PMNS_wait_time = 15;
+unsigned int PMNS_on_time;
 
 void taskPMNS_MAIN(void* v) {
   double prevtime = millis();
@@ -898,13 +902,20 @@ void taskPMNS_MAIN(void* v) {
             pwm_attach = 0;
           }
 
+          if (setPoint < 50){
+            PMNS_on_time = 5;
+          }
+          else{
+            PMNS_on_time = 40;
+          }
+
           switch (PMNS_ssr)
           {
             case 0: //nunggu sampe turun dari kelebihan suhu
               digitalWrite(SSR_PIN, LOW);
               if (TempRead <= setPoint - BB) {
                 PMNS_ssr = 1; //change state
-                PMNS_counter = PMNS_ON_TIME;
+                PMNS_counter = PMNS_on_time;
               }
               break;
             case 1: //decrement from PMNS_ON_TIME until 0
@@ -918,7 +929,7 @@ void taskPMNS_MAIN(void* v) {
             case 2: //nunggu selama WAIT TIME
               digitalWrite(SSR_PIN, LOW);
               PMNS_counter++;
-              if (PMNS_counter >= PMNS_WAIT_TIME)
+              if (PMNS_counter >= PMNS_wait_time)
               {
                 PMNS_ssr = 0;
               }
@@ -938,17 +949,18 @@ void taskPrint(void* v) {
                                    "PNS-PID", "IN-TBNG", "PNS-PID2",
                                    "ROT", "PAUSE", "DONE"
                                   };
+
   Serial.begin(57600);
   Serial.write(0x2);//Start of text
   Serial.println("State,Set Temp,Read Temp,Set RPM,Read RPM,Set Detik,Jalan Detik, PWM Motor");
   Serial.write(0x6);//End of Transmission
   for (;;) {
     //FORMAT DATA: STATE;SP TEMP;TEMP;SP RPM;RPM;SP SEKON;SEKON
-    sprintf(data, "%7s,%d,%d, %d,%.3f,%d,%f,%u,%u,%d",
+    sprintf(data, "%8s,%d,%d,%d,%.3f,%d,%.3f,%u,%u",
             stateConName[stateCondition], PMNS_ssr, PMNS_counter,
             temperatur, TempRead,
             kecepatan, MTR_speed_actual,
-            durasi, timerCounter, MTR_PWM_val);
+            durasi, timerCounter);
     Serial.println(data);
     vTaskDelay(5000);
   }
@@ -1094,13 +1106,21 @@ double PMNS_computePID(double inp, unsigned int setPoint, double* previousTime, 
   double kp;
   double ki;
 
-  if (setPoint > 60) {
+  if (setPoint <= 60) {
+    kp = 12;
+    ki = 0.003;
+  }
+  else if ((setPoint > 60) && (setPoint <= 75)) {
     kp = 12;
     ki = 0.0045;
   }
+  else if ((setPoint > 75) && (setPoint <= 85)) {
+    kp = 12;
+    ki = 0.0065;
+  }
   else {
     kp = 12;
-    ki = 0.003;
+    ki = 0.007;
   }
 
   currentTime = millis() / 1000;                      //get current time
@@ -1137,4 +1157,31 @@ void vTaskControl(TaskHandle_t xHandle, bool* statusVar, unsigned int command) {
       *statusVar = SUSPENDED;
     }
   }
+}
+
+void ringBuzz (void* repeat) {
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  for (int i = 0; i < int (repeat); i++) {
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(150);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(200);
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(50);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(200);
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(50);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(500);
+  }
+
+  digitalWrite(BUZZER_PIN, HIGH);
+  vTaskDelay(500);
+  digitalWrite(BUZZER_PIN, LOW);
+  vTaskDelete(NULL);
 }
