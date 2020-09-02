@@ -1090,6 +1090,7 @@ void updateEncoder() {
 }
 
 double get_temp(DallasTemperature sensor) {
+  //Read temperature sensor 2 times, push the value to medianfilter array
   for (int x = 0 ; x < 2 ; x++) {
     sensor.requestTemperatures();
     medianFilter.AddValue(sensor.getTempCByIndex(0));
