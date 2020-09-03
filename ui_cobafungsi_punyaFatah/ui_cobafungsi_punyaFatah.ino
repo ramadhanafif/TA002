@@ -169,6 +169,7 @@ double MTR_vel;
 volatile double MTR_encoderMotorValue = 0;
 
 // flag for LCD state needs
+int lcdResetCounter = 100;
 boolean forward = 1;
 boolean startProcess = 1;
 boolean pauseState = 0;
@@ -210,6 +211,7 @@ void IRAM_ATTR onTimer() {
   } else if ((stateCondition == STATE_START_ROT) && (durasi == timerCounter)) {
     // Serial.println("Timer Done");
     stateCondition = STATE_DONE;
+    lcdResetCounter = 100;
   }
   timerCounter++;
 }
@@ -412,7 +414,6 @@ void taskDisplay( void * parameter)
   attachInterrupt(encoderPin2, updateEncoder, CHANGE);
 
   int counter = 0;
-  int lcdResetCounter = 100;
 
   // initialize the LCD
   lcd.begin(20, 4);
@@ -506,8 +507,7 @@ void taskDisplay( void * parameter)
             encoderValue = constantEncoderVal;
             stateCondition = STATE_PANAS_PID;
             lcd.clear();
-          }
-          else if (flagSignalBlack == HIGH) {
+          } else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_INPUT_TEMP;
@@ -538,7 +538,6 @@ void taskDisplay( void * parameter)
           if (PMNS_flag_pid_done == 1) {
             stateCondition = STATE_IN_TABUNG;           
             SimpleRingBuzz(3);
-            flagForClearLCD = 0;
           }
 
           if (lcdResetCounter > 35) {
@@ -550,9 +549,17 @@ void taskDisplay( void * parameter)
             vTaskDelay(50);
             lcd.setCursor(0, 1);
             lcd.print("Suhu target: ");
+            lcd.setCursor(16, 1);                   // show character at column 16, row 0
+            lcd.print(char(223));                   // show string "degree" on LCD
+            lcd.setCursor(17, 1);                   // show character at column 17, row 0
+            lcd.print("C");
             vTaskDelay(50);
             lcd.setCursor(0, 2);
             lcd.print("Suhu aktual: ");
+            lcd.setCursor(16, 2);                   // show character at column 16, row 0
+            lcd.print(char(223));                   // show string "degree" on LCD
+            lcd.setCursor(17, 2);                   // show character at column 17, row 0
+            lcd.print("C");
             vTaskDelay(50);
             lcd.setCursor(12, 1);
             lcd.print(bufferForPrintTemp);
@@ -577,12 +584,13 @@ void taskDisplay( void * parameter)
             lcd.clear();
             vTaskDelay(150);
             lcd.home();
-            lcd.print("Masukan tabung!");
+            lcd.print("Masukkan tabung!");
             vTaskDelay(50);
             lcd.setCursor(0, 3);
             lcd.print("Lanjut");
             vTaskDelay(50);
             lcdResetCounter = 100;
+            flagForClearLCD = 1;
           }
           
           if (flagSignalGreen == HIGH) {
@@ -618,9 +626,17 @@ void taskDisplay( void * parameter)
             vTaskDelay(50);
             lcd.setCursor(0, 1);
             lcd.print("Suhu target: ");
+            lcd.setCursor(16, 1);                   // show character at column 16, row 0
+            lcd.print(char(223));                   // show string "degree" on LCD
+            lcd.setCursor(17, 1);                   // show character at column 17, row 0
+            lcd.print("C");
             vTaskDelay(50);
             lcd.setCursor(0, 2);
             lcd.print("Suhu aktual: ");
+            lcd.setCursor(16, 2);                   // show character at column 16, row 0
+            lcd.print(char(223));                   // show string "degree" on LCD
+            lcd.setCursor(17, 2);                   // show character at column 17, row 0
+            lcd.print("C");
             vTaskDelay(50);
             lcd.setCursor(12, 1);
             lcd.print(bufferForPrintTemp);
@@ -694,9 +710,15 @@ void taskDisplay( void * parameter)
             vTaskDelay(50);
             lcd.setCursor(0, 1);
             lcd.print("Kecepatan  : ");
+            lcd.setCursor(16, 1);                   
+            lcd.print("RPM");                   
             vTaskDelay(50);
             lcd.setCursor(0, 2);
             lcd.print("Suhu       : ");
+            lcd.setCursor(16, 2);                  
+            lcd.print(char(223));                 
+            lcd.setCursor(17, 2);            
+            lcd.print("C");
             vTaskDelay(50);
             lcd.setCursor(12, 1);
             lcd.print(speedActual);
@@ -739,7 +761,7 @@ void taskDisplay( void * parameter)
           sprintf(bufferForPrintTemp, "%3d", temperatur);
           sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
 
-          if (lcdResetCounter > 8) {
+          if (lcdResetCounter > 48) {
             lcd.clear();
             vTaskDelay(150);
             lcd.home();
@@ -747,6 +769,10 @@ void taskDisplay( void * parameter)
             vTaskDelay(50);
             lcd.setCursor(0, 2);
             lcd.print("Suhu aktual: ");
+            lcd.setCursor(16, 2);                   // show character at column 16, row 0
+            lcd.print(char(223));                   // show string "degree" on LCD
+            lcd.setCursor(17, 2);            
+            lcd.print("C");
             vTaskDelay(50);
             lcd.setCursor(12, 2);
             lcd.print(bufferForprintTempRead);
@@ -765,8 +791,8 @@ void taskDisplay( void * parameter)
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
           vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
           
-          if ((timerCounter - durasi) % 15*60 == 0) {
-            SimpleRingBuzz(25);
+          if ((timerCounter - durasi) % (15*60) == 5) {
+            SimpleRingBuzz(14);
           }
         } break;
     }
@@ -1176,33 +1202,6 @@ void vTaskControl(TaskHandle_t xHandle, bool* statusVar, unsigned int command) {
       *statusVar = SUSPENDED;
     }
   }
-}
-
-void ringBuzz (void* repeat) {
-  pinMode(BUZZER_PIN, OUTPUT);
-
-  for (int i = 0; i < int (repeat); i++) {
-    digitalWrite(BUZZER_PIN, LOW);
-    vTaskDelay(150);
-
-    digitalWrite(BUZZER_PIN, HIGH);
-    vTaskDelay(200);
-    digitalWrite(BUZZER_PIN, LOW);
-    vTaskDelay(50);
-
-    digitalWrite(BUZZER_PIN, HIGH);
-    vTaskDelay(200);
-    digitalWrite(BUZZER_PIN, LOW);
-    vTaskDelay(50);
-
-    digitalWrite(BUZZER_PIN, HIGH);
-    vTaskDelay(500);
-  }
-
-  digitalWrite(BUZZER_PIN, HIGH);
-  vTaskDelay(500);
-  digitalWrite(BUZZER_PIN, LOW);
-  vTaskDelete(NULL);
 }
 
 void SimpleRingBuzz (int repeat) {
