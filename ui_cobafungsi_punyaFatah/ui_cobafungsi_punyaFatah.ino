@@ -536,7 +536,9 @@ void taskDisplay( void * parameter)
           }
 
           if (PMNS_flag_pid_done == 1) {
-            stateCondition = STATE_IN_TABUNG;
+            stateCondition = STATE_IN_TABUNG;           
+            SimpleRingBuzz(3);
+            flagForClearLCD = 0;
           }
 
           if (lcdResetCounter > 35) {
@@ -570,7 +572,7 @@ void taskDisplay( void * parameter)
           }
         } break;
       case STATE_IN_TABUNG: {
-          if (lcdResetCounter > 15) {
+          if (!flagForClearLCD) {
             // initialize the LCD
             lcd.clear();
             vTaskDelay(150);
@@ -580,30 +582,18 @@ void taskDisplay( void * parameter)
             lcd.setCursor(0, 3);
             lcd.print("Lanjut");
             vTaskDelay(50);
-            lcdResetCounter = 0;
-          } else {
-            lcdResetCounter++;
+            lcdResetCounter = 100;
           }
-
-          BaseType_t isBuzzerRing;
-
-          if (isBuzzerRing == pdFALSE) 
-            isBuzzerRing = xTaskCreate(ringBuzz,
-                                       "Buzzer in tabung",
-                                       1000,
-                                       (void*) 3,
-                                       tskIDLE_PRIORITY,
-                                       NULL);
           
           if (flagSignalGreen == HIGH) {
             flagSignalGreen = LOW;
             stateCondition = STATE_TEMP_STEADY;
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
-            lcdResetCounter = 100;
+            // lcdResetCounter = 100;
           } else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
-            lcdResetCounter = 100;
+            // lcdResetCounter = 100;
           }
         } break;
       case STATE_TEMP_STEADY: {
@@ -774,14 +764,9 @@ void taskDisplay( void * parameter)
           MTR_speed_req = 0;
           vTaskControl(TaskHandle_SpeadRead, &IsRun_SpeedRead_rpm, SUSPEND);
           vTaskControl(TaskHandle_Pause, &IsRun_Pause, SUSPEND);
-          if ((timerCounter - durasi) % 10 == 0)
-          {
-            for (int m = 0; m < 3; m++) {
-              digitalWrite(BUZZER_PIN, HIGH);
-              vTaskDelay(150);
-              digitalWrite(BUZZER_PIN, LOW);
-              vTaskDelay(50);
-            }
+          
+          if ((timerCounter - durasi) % 15*60 == 0) {
+            SimpleRingBuzz(25);
           }
         } break;
     }
@@ -936,10 +921,9 @@ void taskPMNS_MAIN(void* v) {
             pwm_attach = 0;
           }
 
-          if (setPoint < 50){
+          if (setPoint < 50) {
             PMNS_on_time = 5;
-          }
-          else{
+          } else {
             PMNS_on_time = 40;
           }
 
@@ -1123,6 +1107,7 @@ void updateEncoder() {
 }
 
 double get_temp(DallasTemperature sensor) {
+  //Read temperature sensor 2 times, push the value to medianfilter array
   for (int x = 0 ; x < 2 ; x++) {
     sensor.requestTemperatures();
     medianFilter.AddValue(sensor.getTempCByIndex(0));
@@ -1218,4 +1203,31 @@ void ringBuzz (void* repeat) {
   vTaskDelay(500);
   digitalWrite(BUZZER_PIN, LOW);
   vTaskDelete(NULL);
+}
+
+void SimpleRingBuzz (int repeat) {
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  for (int i = 0; i < int (repeat); i++) {
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(150);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(200);
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(50);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(200);
+    digitalWrite(BUZZER_PIN, LOW);
+    vTaskDelay(50);
+
+    digitalWrite(BUZZER_PIN, HIGH);
+    vTaskDelay(500);
+  }
+
+  digitalWrite(BUZZER_PIN, HIGH);
+  vTaskDelay(500);
+  digitalWrite(BUZZER_PIN, LOW);
+
 }
