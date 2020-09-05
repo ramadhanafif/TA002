@@ -169,11 +169,9 @@ double MTR_vel;
 volatile double MTR_encoderMotorValue = 0;
 
 // flag for LCD state needs
-int lcdResetCounter = 100;
-boolean forward = 1;
-boolean startProcess = 1;
+int lcdResetCounter = 100;   // variable for clear the lcd periodically
 boolean pauseState = 0;
-boolean flagForClearLCD = 0; // variable for clear the lcd at the STATE_START_ROT
+boolean flagForClearLCD = 0; // variable for clear the lcd if needed
 
 // PEMANAS
 volatile unsigned int PMNS_pemanas_state = PMNS_STATE_NULL;
@@ -344,10 +342,7 @@ void taskInput( void * parameter )
         //do nothing
       } else if (currentButtonStateGreen == LOW && lastButtonStateGreen == HIGH) {
         //button is being pushed
-        // stateCondition ++;
-        // encoderValue = constantEncoderVal;
         flagSignalGreen = HIGH;
-        // forward = 1;
       }
 
       if (currentButtonStateBlack == HIGH && lastButtonStateBlack == LOW) {
@@ -355,10 +350,7 @@ void taskInput( void * parameter )
         //do nothing
       } else if (currentButtonStateBlack == LOW && lastButtonStateBlack == HIGH) {
         //button is being pushed
-        // stateCondition --;
-        // encoderValue = constantEncoderVal;
         flagSignalBlack = HIGH;
-        // forward = 0;
       }
 
       if (currentButtonStateWhite == HIGH && lastButtonStateWhite == LOW) {
@@ -496,7 +488,7 @@ void taskDisplay( void * parameter)
           }
         } break;
       case STATE_CONFIRM: {
-          lcd.home();
+          // lcd.home(); --> no need, because already cleared using lcd.clear()
           lcd.print("Lanjutkan Pengadukan");
           lcd.setCursor(0, 3);
           lcd.print("Ya");
@@ -506,12 +498,12 @@ void taskDisplay( void * parameter)
             flagSignalGreen = LOW;
             encoderValue = constantEncoderVal;
             stateCondition = STATE_PANAS_PID;
+            flagForClearLCD = 0;
             lcd.clear();
           } else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
             encoderValue = constantEncoderVal;
-            stateCondition = STATE_INPUT_TEMP;
-            lcd.clear();
+            stateCondition = STATE_INIT;
           }
         } break;
       case STATE_PANAS_PID: {
@@ -523,11 +515,11 @@ void taskDisplay( void * parameter)
           unsigned int newTempForPrint = int(TempRead);
           unsigned int oldTempForPrint;
           char bufferForPrintTemp[4];
-          char bufferForprintTempRead[4];
+          char bufferForPrintTempRead[4];
 
           // // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
-          sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
+          sprintf(bufferForPrintTempRead, "%3d", newTempForPrint);
 
           //PERINTAH PANAS MASUK SINI
           if (PMNS_pemanas_state != PMNS_STATE_PID) {
@@ -540,11 +532,11 @@ void taskDisplay( void * parameter)
             SimpleRingBuzz(3);
           }
 
-          if (lcdResetCounter > 35) {
+          if (!flagForClearLCD) {
+            flagForClearLCD = 1;
             // initialize the LCD
             lcd.clear();
             vTaskDelay(150);
-            lcd.home();
             lcd.print("Memanaskan ");
             vTaskDelay(50);
             lcd.setCursor(0, 1);
@@ -561,10 +553,13 @@ void taskDisplay( void * parameter)
             lcd.setCursor(17, 2);                   // show character at column 17, row 0
             lcd.print("C");
             vTaskDelay(50);
+          }
+
+          if (lcdResetCounter > 6) {
             lcd.setCursor(12, 1);
             lcd.print(bufferForPrintTemp);
             lcd.setCursor(12, 2);
-            lcd.print(bufferForprintTempRead);
+            lcd.print(bufferForPrintTempRead);
             oldTempForPrint = newTempForPrint;
             lcdResetCounter = 0;
           } else {
@@ -573,24 +568,22 @@ void taskDisplay( void * parameter)
               lcd.setCursor(12, 1);
               lcd.print(bufferForPrintTemp);
               lcd.setCursor(12, 2);
-              lcd.print(bufferForprintTempRead);
+              lcd.print(bufferForPrintTempRead);
               oldTempForPrint = newTempForPrint;
             }
           }
         } break;
       case STATE_IN_TABUNG: {
-          if (!flagForClearLCD) {
-            // initialize the LCD
+          if (flagForClearLCD) {      // flagForClearLCD = 1
+            flagForClearLCD = 0;
             lcd.clear();
-            vTaskDelay(150);
-            lcd.home();
+            vTaskDelay(200);
             lcd.print("Masukkan tabung!");
-            vTaskDelay(50);
+            vTaskDelay(300);
             lcd.setCursor(0, 3);
             lcd.print("Lanjut");
             vTaskDelay(50);
             lcdResetCounter = 100;
-            flagForClearLCD = 1;
           }
           
           if (flagSignalGreen == HIGH) {
@@ -598,10 +591,9 @@ void taskDisplay( void * parameter)
             stateCondition = STATE_TEMP_STEADY;
             PMNS_flag_pid_done = 0;
             PMNS_state_counter = 0;
-            // lcdResetCounter = 100;
+            lcdResetCounter = 100;
           } else if (flagSignalBlack == HIGH) {
             flagSignalBlack = LOW;
-            // lcdResetCounter = 100;
           }
         } break;
       case STATE_TEMP_STEADY: {
@@ -611,37 +603,59 @@ void taskDisplay( void * parameter)
           unsigned int newTempForPrint = int(TempRead);
           unsigned int oldTempForPrint;
           char bufferForPrintTemp[4];
-          char bufferForprintTempRead[4];
+          char bufferForPrintTempRead[4];
 
           // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
-          sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
+          sprintf(bufferForPrintTempRead, "%3d", newTempForPrint);
 
-          if (lcdResetCounter > 25) {
-            // initialize the LCD
+          if (!flagForClearLCD) {     // flagForClearLCD = 0
+            flagForClearLCD = 1;
             lcd.clear();
             vTaskDelay(150);
-            lcd.home();
             lcd.print("Memanaskan 2");
-            vTaskDelay(50);
+            vTaskDelay(200);
             lcd.setCursor(0, 1);
             lcd.print("Suhu target: ");
             lcd.setCursor(16, 1);                   // show character at column 16, row 0
             lcd.print(char(223));                   // show string "degree" on LCD
             lcd.setCursor(17, 1);                   // show character at column 17, row 0
             lcd.print("C");
-            vTaskDelay(50);
+            vTaskDelay(100);
             lcd.setCursor(0, 2);
             lcd.print("Suhu aktual: ");
             lcd.setCursor(16, 2);                   // show character at column 16, row 0
             lcd.print(char(223));                   // show string "degree" on LCD
             lcd.setCursor(17, 2);                   // show character at column 17, row 0
             lcd.print("C");
-            vTaskDelay(50);
+            vTaskDelay(100);
+          }
+
+          if (lcdResetCounter > 6) {
+            // // initialize the LCD
+            // lcd.clear();
+            // vTaskDelay(150);
+            // lcd.home();
+            // lcd.print("Memanaskan 2");
+            // vTaskDelay(50);
+            // lcd.setCursor(0, 1);
+            // lcd.print("Suhu target: ");
+            // lcd.setCursor(16, 1);                   // show character at column 16, row 0
+            // lcd.print(char(223));                   // show string "degree" on LCD
+            // lcd.setCursor(17, 1);                   // show character at column 17, row 0
+            // lcd.print("C");
+            // vTaskDelay(50);
+            // lcd.setCursor(0, 2);
+            // lcd.print("Suhu aktual: ");
+            // lcd.setCursor(16, 2);                   // show character at column 16, row 0
+            // lcd.print(char(223));                   // show string "degree" on LCD
+            // lcd.setCursor(17, 2);                   // show character at column 17, row 0
+            // lcd.print("C");
+            // vTaskDelay(50);
             lcd.setCursor(12, 1);
             lcd.print(bufferForPrintTemp);
             lcd.setCursor(12, 2);
-            lcd.print(bufferForprintTempRead);
+            lcd.print(bufferForPrintTempRead);
             oldTempForPrint = newTempForPrint;
             lcdResetCounter = 0;
           } else {
@@ -650,7 +664,7 @@ void taskDisplay( void * parameter)
               lcd.setCursor(12, 1);
               lcd.print(bufferForPrintTemp);
               lcd.setCursor(12, 2);
-              lcd.print(bufferForprintTempRead);
+              lcd.print(bufferForPrintTempRead);
               oldTempForPrint = newTempForPrint;
             }
           }
@@ -674,7 +688,7 @@ void taskDisplay( void * parameter)
           // buffer variable
           unsigned int newTempForPrint = int(TempRead);
           unsigned int oldTempForPrint;
-          unsigned int newSpeedForPrint = int(MTR_speed_actual);
+          unsigned int newSpeedForPrint = roundTheNumber(MTR_speed_actual);
           unsigned int oldSpeedForPrint;
           char tempActual[4];
           char speedActual[4];
@@ -691,19 +705,12 @@ void taskDisplay( void * parameter)
           sprintf(hourLeft, "%02d:", (int)((durasi - timerCounter) / 3600));
           sprintf(minuteLeft, "%02d", (((durasi - timerCounter) - ((durasi - timerCounter) / 3600) * 3600) / 60));
 
-
-          lcd.setCursor(0, 3);
-          lcd.print("Sisa waktu : ");
-          lcd.setCursor(13, 3);
-          lcd.print(hourLeft);
-          lcd.print(minuteLeft);
-
-          if (lcdResetCounter > 20) {
-            // initialize the LCD
+          if (flagForClearLCD) {      // flagForClearLCD = 1
+            flagForClearLCD = 0;
             lcd.clear();
-            lcd.home();
+            vTaskDelay(200);
             lcd.print("Set point  : ");
-            vTaskDelay(50);
+            vTaskDelay(300);
             lcd.setCursor(12, 0);
             lcd.print(setSpeed);
             lcd.print(setTemp);
@@ -720,10 +727,51 @@ void taskDisplay( void * parameter)
             lcd.setCursor(17, 2);            
             lcd.print("C");
             vTaskDelay(50);
+            lcd.setCursor(0, 3);
+            lcd.print("Sisa waktu : ");
+            // vTaskDelay(50);
+            // lcd.setCursor(13, 3);
+            // lcd.print(hourLeft);
+            // lcd.print(minuteLeft);
+          }
+
+          // lcd.setCursor(0, 3);
+          // lcd.print("Sisa waktu : ");
+          // vTaskDelay(50);
+          lcd.setCursor(13, 3);
+          lcd.print(hourLeft);
+          lcd.print(minuteLeft);
+
+          if (lcdResetCounter > 15) {
+            // // initialize the LCD
+            // lcd.clear();
+            // lcd.home();
+            // lcd.print("Set point  : ");
+            // vTaskDelay(50);
+            // lcd.setCursor(12, 0);
+            // lcd.print(setSpeed);
+            // lcd.print(setTemp);
+            // vTaskDelay(50);
+            // lcd.setCursor(0, 1);
+            // lcd.print("Kecepatan  : ");
+            // lcd.setCursor(16, 1);                   
+            // lcd.print("RPM");                   
+            // vTaskDelay(50);
+            // lcd.setCursor(0, 2);
+            // lcd.print("Suhu       : ");
+            // lcd.setCursor(16, 2);                  
+            // lcd.print(char(223));                 
+            // lcd.setCursor(17, 2);            
+            // lcd.print("C");
+            // vTaskDelay(50);
             lcd.setCursor(12, 1);
             lcd.print(speedActual);
             lcd.setCursor(12, 2);
             lcd.print(tempActual);
+            // lcd.setCursor(13, 3);
+            // vTaskDelay(100);
+            // lcd.print(hourLeft);
+            // lcd.print(minuteLeft);
             oldTempForPrint = newTempForPrint;
             oldSpeedForPrint = newSpeedForPrint;
             vTaskDelay(150);
@@ -755,16 +803,15 @@ void taskDisplay( void * parameter)
           unsigned int newTempForPrint = int(TempRead);
           unsigned int oldTempForPrint;
           char bufferForPrintTemp[4];
-          char bufferForprintTempRead[4];
+          char bufferForPrintTempRead[4];
 
           // convert to string
           sprintf(bufferForPrintTemp, "%3d", temperatur);
-          sprintf(bufferForprintTempRead, "%3d", newTempForPrint);
+          sprintf(bufferForPrintTempRead, "%3d", newTempForPrint);
 
           if (lcdResetCounter > 48) {
             lcd.clear();
             vTaskDelay(150);
-            lcd.home();
             lcd.print("Proses selesai");
             vTaskDelay(50);
             lcd.setCursor(0, 2);
@@ -775,14 +822,14 @@ void taskDisplay( void * parameter)
             lcd.print("C");
             vTaskDelay(50);
             lcd.setCursor(12, 2);
-            lcd.print(bufferForprintTempRead);
+            lcd.print(bufferForPrintTempRead);
             oldTempForPrint = newTempForPrint;
             lcdResetCounter = 0; 
           } else {
             lcdResetCounter++;
             if (newTempForPrint != oldTempForPrint) {
               lcd.setCursor(12, 2);
-              lcd.print(bufferForprintTempRead);
+              lcd.print(bufferForPrintTempRead);
               oldTempForPrint = newTempForPrint;
             }
           }
@@ -1228,5 +1275,12 @@ void SimpleRingBuzz (int repeat) {
   digitalWrite(BUZZER_PIN, HIGH);
   vTaskDelay(500);
   digitalWrite(BUZZER_PIN, LOW);
+}
 
+int roundTheNumber(float theNumber) {
+  if ((theNumber - int(theNumber)) < 0.5 ) {
+    return int(theNumber);
+  } else {
+    return int(theNumber) + 1;
+  }
 }
